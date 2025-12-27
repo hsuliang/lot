@@ -57,6 +57,17 @@
 
                     <div class="flex items-center justify-between">
                         <div class="flex flex-col">
+                            <span class="font-semibold text-lg" style="color: var(--text-color);">啟用多人/分次抽取功能</span>
+                            <span class="text-sm" style="color: var(--text-muted-color);">點擊一次摸彩按鈕可同時抽出多位得獎者。</span>
+                        </div>
+                        <label for="batch-draw-toggle" class="inline-flex relative items-center cursor-pointer">
+                            <input type="checkbox" id="batch-draw-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 toggle-switch-bg peer-checked:bg-red-500"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-col">
                             <span class="font-semibold text-lg" style="color: var(--text-color);">過濾重複姓名</span>
                             <span class="text-sm" style="color: var(--text-muted-color);">讀取名單時檢查是否有重複人名。</span>
                         </div>
@@ -270,7 +281,7 @@
                     準備開始！
                 </div>
 
-                <div id="batch-settings" class="mb-6 flex flex-col items-center justify-center gap-2">
+                <div id="batch-settings" class="mb-6 flex flex-col items-center justify-center gap-2 hidden">
                     <div class="flex items-center gap-3">
                         <label for="batch-size-input" class="font-semibold" style="color: var(--text-muted-color);">本次抽出人數:</label>
                         <input type="number" id="batch-size-input" class="form-input w-20 text-center text-xl p-1 rounded-lg" value="1" min="1" max="100">
@@ -297,7 +308,7 @@
     <audio id="winner-sound" src="https://hsuliang.github.io/happy.mp3" preload="auto"></audio>
     
     <footer class="fixed bottom-0 left-0 right-0 p-3 text-center text-xs backdrop-blur-sm" style="color: var(--text-muted-color); background-color: var(--footer-bg);">
-        <span>v2.6.0</span> |
+        <span>v2.9.0@2025/12/27</span> |
         <span>由 Google Gemini 強力驅動</span> |
         <a href="https://bit.ly/Alaing" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">ㄚ亮笑長練功坊</a>
     </footer>

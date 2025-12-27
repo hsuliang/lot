@@ -78,14 +78,18 @@ const resetLogoBtn = document.getElementById('reset-logo-btn');
 const resetBgBtn = document.getElementById('reset-bg-btn');
 const appBgOverlay = document.getElementById('app-bg-overlay');
 
+// Mode Settings Toggle
+const simpleDrawToggle = document.getElementById('simple-draw-toggle');
+const batchDrawToggle = document.getElementById('batch-draw-toggle');
+const filterDuplicatesToggle = document.getElementById('filter-duplicates-toggle');
+
 // Batch Drawing Elements
 const batchSizeInput = document.getElementById('batch-size-input');
+const batchSettingsContainer = document.getElementById('batch-settings');
 
 const rollingSound = document.getElementById('rolling-sound');
 const winnerSound = document.getElementById('winner-sound');
 const winnerEffectSelect = document.getElementById('winner-effect-select');
-const simpleDrawToggle = document.getElementById('simple-draw-toggle');
-const filterDuplicatesToggle = document.getElementById('filter-duplicates-toggle');
 
 // Duplicates Modal Elements
 const duplicatesModal = document.getElementById('duplicates-modal');
@@ -171,6 +175,14 @@ const init = () => {
     // Other settings
     soundToggleBtn.addEventListener('click', toggleSound);
     simpleDrawToggle.addEventListener('change', handleSimpleDrawToggle);
+    
+    // 多人/分次抽取開關監聽
+    batchDrawToggle.addEventListener('change', (e) => {
+        const isEnabled = e.target.checked;
+        batchSettingsContainer.classList.toggle('hidden', !isEnabled);
+        localStorage.setItem('batchDrawEnabled', isEnabled);
+    });
+
     filterDuplicatesToggle.addEventListener('change', (e) => {
         localStorage.setItem('filterDuplicates', e.target.checked);
     });
@@ -205,11 +217,14 @@ const init = () => {
     switchEnvTab('mode');
     handleUrlParams();
 
-    const savedMode = localStorage.getItem('simpleDrawMode') === 'true';
-    simpleDrawToggle.checked = savedMode;
-    if (savedMode) {
-        tabPrizeBtn.classList.add('hidden');
-    }
+    // 恢復模式設定狀態
+    const savedSimpleMode = localStorage.getItem('simpleDrawMode') === 'true';
+    simpleDrawToggle.checked = savedSimpleMode;
+    if (savedSimpleMode) tabPrizeBtn.classList.add('hidden');
+
+    const savedBatchEnabled = localStorage.getItem('batchDrawEnabled') === 'true';
+    batchDrawToggle.checked = savedBatchEnabled;
+    batchSettingsContainer.classList.toggle('hidden', !savedBatchEnabled);
 
     const savedFilter = localStorage.getItem('filterDuplicates') === 'true';
     filterDuplicatesToggle.checked = savedFilter;
@@ -263,6 +278,7 @@ const saveSession = () => {
         prizes,
         currentPrizeIndex,
         simpleDrawMode: simpleDrawToggle.checked,
+        batchDrawEnabled: batchDrawToggle.checked,
         title: mainTitle.textContent
     };
     localStorage.setItem('lottery_session', JSON.stringify(sessionData));
@@ -277,6 +293,8 @@ const loadSession = () => {
         prizes = data.prizes;
         currentPrizeIndex = data.currentPrizeIndex;
         simpleDrawToggle.checked = data.simpleDrawMode;
+        batchDrawToggle.checked = data.batchDrawEnabled || false;
+        batchSettingsContainer.classList.toggle('hidden', !batchDrawToggle.checked);
         mainTitle.textContent = data.title;
         document.title = data.title;
         
@@ -544,7 +562,7 @@ const handleDrawWinner = () => {
     if (!currentPrize) return;
 
     // 計算批次抽取人數
-    let batchSize = parseInt(batchSizeInput.value, 10) || 1;
+    let batchSize = batchDrawToggle.checked ? (parseInt(batchSizeInput.value, 10) || 1) : 1;
     const remainingInPrize = currentPrize.quantity - currentPrize.winners.length;
     if (batchSize > remainingInPrize) batchSize = remainingInPrize;
     if (batchSize > participants.length) batchSize = participants.length;
@@ -757,12 +775,20 @@ const updateWinnersList = () => {
 
 const exportResultsToCsv = () => {
     const isSimpleMode = simpleDrawToggle.checked;
-    let csvContent = isSimpleMode ? '\uFEFF"抽出順序","姓名"\n' : '\uFEFF"獎項","得獎人"\n';
+    // 修正標頭：增加「領取獎項」
+    let csvContent = isSimpleMode ? '\uFEFF"抽出順序","姓名","是否領取"\n' : '\uFEFF"獎項","得獎人","領取獎項"\n';
+    
     prizes.forEach(prize => {
         prize.winners.forEach((winner, index) => {
             const winnerEscaped = `"${winner.name.replace(/"/g, '""')}"`;
-            if (isSimpleMode) { csvContent += `${index + 1},${winnerEscaped}\n`; } 
-            else { csvContent += `"${prize.name.replace(/"/g, '""')}","${winnerEscaped}"\n`; }
+            const claimedText = winner.claimed ? "是" : "否";
+            
+            if (isSimpleMode) {
+                csvContent += `${index + 1},${winnerEscaped},"${claimedText}"\n`;
+            } else {
+                const prizeNameEscaped = `"${prize.name.replace(/"/g, '""')}"`;
+                csvContent += `${prizeNameEscaped},${winnerEscaped},"${claimedText}"\n`;
+            }
         });
     });
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
