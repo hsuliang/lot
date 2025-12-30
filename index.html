@@ -213,6 +213,12 @@
                                 <input type="text" id="column-letter" maxlength="2" class="form-input w-full p-2 rounded" value="A" placeholder="A, B, C...">
                             </div>
                         </div>
+                        <div class="mt-2">
+                             <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="cloud-smart-filter" class="form-checkbox rounded text-red-500" checked>
+                                <span class="ml-2" style="color: var(--text-color);">啟用智慧過濾（自動比對電話、Email 以區分同名同姓）</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -226,6 +232,12 @@
                             <label for="csv-column-letter" class="block mb-1 font-semibold" style="color: var(--accent-color);">名單在哪一欄？</label>
                             <input type="text" id="csv-column-letter" maxlength="2" class="form-input w-full p-2 rounded" value="A" placeholder="A, B, C...">
                         </div>
+                    </div>
+                    <div class="mt-2">
+                         <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="csv-smart-filter" class="form-checkbox rounded text-red-500" checked>
+                            <span class="ml-2" style="color: var(--text-color);">啟用智慧過濾（自動比對電話、Email 以區分同名同姓）</span>
+                        </label>
                     </div>
                     <div>
                         <details>
@@ -325,6 +337,23 @@
                     <button id="dup-keep-one-btn" class="btn-primary py-3 rounded-lg font-bold">留下一個</button>
                 </div>
                 <button id="dup-cancel-btn" class="w-full btn-secondary py-2 rounded-lg" style="color: var(--text-muted-color);">取消並手動修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增：欄位選擇視窗 -->
+    <div id="column-selection-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black/70 backdrop-blur-sm p-4">
+        <div class="card max-w-lg w-full p-8 rounded-lg shadow-2xl">
+            <h2 class="text-2xl font-bold mb-2" style="color: var(--accent-color);">請選擇識別欄位</h2>
+            <p class="mb-4 text-sm" style="color: var(--text-muted-color);">系統將依據您勾選的欄位來區分「同名同姓」的人。若欄位內容相同，將視為同一人。</p>
+            
+            <div id="column-selection-container" class="max-h-60 overflow-y-auto mb-6 p-4 rounded bg-black/20 space-y-3">
+                <!-- Checkboxes will be injected here -->
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <button id="confirm-column-selection-btn" class="btn-primary py-3 rounded-lg font-bold text-lg">確定載入</button>
+                <button id="cancel-column-selection-btn" class="w-full btn-secondary py-2 rounded-lg" style="color: var(--text-muted-color);">取消</button>
             </div>
         </div>
     </div>

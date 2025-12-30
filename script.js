@@ -98,6 +98,12 @@ const dupDeleteAllBtn = document.getElementById('dup-delete-all-btn');
 const dupKeepOneBtn = document.getElementById('dup-keep-one-btn');
 const dupCancelBtn = document.getElementById('dup-cancel-btn');
 
+// Column Selection Modal Elements
+const columnSelectionModal = document.getElementById('column-selection-modal');
+const columnSelectionContainer = document.getElementById('column-selection-container');
+const confirmColumnSelectionBtn = document.getElementById('confirm-column-selection-btn');
+const cancelColumnSelectionBtn = document.getElementById('cancel-column-selection-btn');
+
 // Recovery Modal Elements
 const recoveryModal = document.getElementById('recovery-modal');
 const resumeSessionBtn = document.getElementById('resume-session-btn');
@@ -107,6 +113,7 @@ const discardSessionBtn = document.getElementById('discard-session-btn');
 // State
 let participants = [];
 let pendingParticipants = []; 
+let pendingLoadedData = null; // Temp storage for loaded data awaiting column selection
 let prizes = [];
 let currentPrizeIndex = 0;
 let rollingInterval = null;
@@ -115,7 +122,7 @@ let isSoundOn = true;
 const themes = [ { id: 'candy', name: '糖果王國', colors: ['#ff69b4', '#87ceeb'] }, { id: 'forest', name: '森林夥伴', colors: ['#228b22', '#ff7f50'] }, { id: 'izakaya', name: '居酒屋', colors: ['#e53e3e', '#ffab00'] }, { id: 'sakura', name: '櫻花', colors: ['#db2777', '#fdf2f8'] }, { id: 'midnight', name: '午夜', colors: ['#38bdf8', '#0f172a'] } ];
 const buttonPhrases = [ '獎落誰家？就是你家！', '帶回就是福氣', '抽中就是緣分', '好運滾滾來', '表單一定要填' ];
 
-const init = () => {
+function init() {
     // Main Actions
     loadButton.addEventListener('click', handleLoadData);
     drawButton.addEventListener('click', handleDrawWinner);
@@ -176,7 +183,7 @@ const init = () => {
     soundToggleBtn.addEventListener('click', toggleSound);
     simpleDrawToggle.addEventListener('change', handleSimpleDrawToggle);
     
-    // 多人/分次抽取開關監聽
+    // Batch drawing toggle
     batchDrawToggle.addEventListener('change', (e) => {
         const isEnabled = e.target.checked;
         batchSettingsContainer.classList.toggle('hidden', !isEnabled);
@@ -194,6 +201,15 @@ const init = () => {
         duplicatesModal.classList.add('hidden');
         loadButton.disabled = false;
         updateStatus('載入已取消。');
+    });
+
+    // Column Selection Modal Actions
+    confirmColumnSelectionBtn.addEventListener('click', handleColumnSelectionConfirmed);
+    cancelColumnSelectionBtn.addEventListener('click', () => {
+        columnSelectionModal.classList.add('hidden');
+        loadButton.disabled = false;
+        updateStatus('載入已取消。');
+        pendingLoadedData = null;
     });
 
     // Recovery Modal Actions
@@ -217,7 +233,7 @@ const init = () => {
     switchEnvTab('mode');
     handleUrlParams();
 
-    // 恢復模式設定狀態
+    // Restore mode settings
     const savedSimpleMode = localStorage.getItem('simpleDrawMode') === 'true';
     simpleDrawToggle.checked = savedSimpleMode;
     if (savedSimpleMode) tabPrizeBtn.classList.add('hidden');
@@ -239,7 +255,7 @@ const init = () => {
 };
 
 // --- VISUAL CUSTOMIZATION FUNCTIONS ---
-const handleImageUpload = (event, storageKey) => {
+function handleImageUpload(event, storageKey) {
     const file = event.target.files[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) { alert('圖片太大囉！請上傳小於 2MB 的圖片。'); return; }
@@ -250,9 +266,9 @@ const handleImageUpload = (event, storageKey) => {
         loadVisuals();
     };
     reader.readAsDataURL(file);
-};
+}
 
-const loadVisuals = () => {
+function loadVisuals() {
     const customLogo = localStorage.getItem('customLogo');
     if (customLogo) {
         logoImg.src = customLogo;
@@ -269,10 +285,10 @@ const loadVisuals = () => {
         appBgOverlay.style.backgroundImage = 'none';
         appBgOverlay.style.opacity = '0';
     }
-};
+}
 
 // --- SESSION RECOVERY FUNCTIONS ---
-const saveSession = () => {
+function saveSession() {
     const sessionData = {
         participants,
         prizes,
@@ -282,9 +298,9 @@ const saveSession = () => {
         title: mainTitle.textContent
     };
     localStorage.setItem('lottery_session', JSON.stringify(sessionData));
-};
+}
 
-const loadSession = () => {
+function loadSession() {
     const savedSession = localStorage.getItem('lottery_session');
     if (!savedSession) return;
     try {
@@ -306,14 +322,14 @@ const loadSession = () => {
         console.error("恢復進度失敗:", e);
         clearSession();
     }
-};
+}
 
-const clearSession = () => {
+function clearSession() {
     localStorage.removeItem('lottery_session');
     recoveryModal.classList.add('hidden');
-};
+}
 
-const exportCurrentSessionToCsv = () => {
+function exportCurrentSessionToCsv() {
     const savedSession = localStorage.getItem('lottery_session');
     if (!savedSession) return;
     
@@ -359,46 +375,43 @@ const exportCurrentSessionToCsv = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-};
+}
 
-// --- LIST TEMPLATE FUNCTIONS ---
+// --- TEMPLATE FUNCTIONS ---
 const getListTemplates = () => JSON.parse(localStorage.getItem('listTemplates') || '{}');
 const saveListTemplates = (templates) => localStorage.setItem('listTemplates', JSON.stringify(templates));
-const saveListTemplate = () => { const name = listTemplateNameInput.value.trim(); const listContent = customListInput.value.trim(); if (!name || !listContent) { alert('範本名稱和名單內容都不能為空！'); return; } const templates = getListTemplates(); templates[name] = listContent; saveListTemplates(templates); listTemplateNameInput.value = ''; renderSavedListTemplates(); };
-const loadListTemplate = (name) => { const templates = getListTemplates(); const listContent = templates[name]; if (listContent) { customListInput.value = listContent; } };
-const deleteListTemplate = (name) => { const templates = getListTemplates(); delete templates[name]; saveListTemplates(templates); renderSavedListTemplates(); };
-const renderSavedListTemplates = () => { const templates = getListTemplates(); listTemplateButtonsContainer.innerHTML = ''; for (const name in templates) { const container = document.createElement('div'); container.className = 'custom-template flex items-center rounded-lg'; container.style.backgroundColor = 'var(--secondary-color)'; const button = document.createElement('button'); button.textContent = name; button.className = 'px-4 py-2 text-sm'; button.addEventListener('click', () => loadListTemplate(name)); const deleteBtn = document.createElement('button'); deleteBtn.textContent = '✕'; deleteBtn.className = 'px-2 py-2 text-sm'; deleteBtn.style.color = 'var(--danger-color)'; deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteListTemplate(name); }); container.appendChild(button); container.appendChild(deleteBtn); listTemplateButtonsContainer.appendChild(container); } };
+function saveListTemplate() { const name = listTemplateNameInput.value.trim(); const listContent = customListInput.value.trim(); if (!name || !listContent) { alert('範本名稱和名單內容都不能為空！'); return; } const templates = getListTemplates(); templates[name] = listContent; saveListTemplates(templates); listTemplateNameInput.value = ''; renderSavedListTemplates(); }
+function loadListTemplate(name) { const templates = getListTemplates(); const listContent = templates[name]; if (listContent) { customListInput.value = listContent; } }
+function deleteListTemplate(name) { const templates = getListTemplates(); delete templates[name]; saveListTemplates(templates); renderSavedListTemplates(); }
+function renderSavedListTemplates() { const templates = getListTemplates(); listTemplateButtonsContainer.innerHTML = ''; for (const name in templates) { const container = document.createElement('div'); container.className = 'custom-template flex items-center rounded-lg'; container.style.backgroundColor = 'var(--secondary-color)'; const button = document.createElement('button'); button.textContent = name; button.className = 'px-4 py-2 text-sm'; button.addEventListener('click', () => loadListTemplate(name)); const deleteBtn = document.createElement('button'); deleteBtn.textContent = '✕'; deleteBtn.className = 'px-2 py-2 text-sm'; deleteBtn.style.color = 'var(--danger-color)'; deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteListTemplate(name); }); container.appendChild(button); container.appendChild(deleteBtn); listTemplateButtonsContainer.appendChild(container); } }
 
-// --- EXCLUDE TEMPLATE FUNCTIONS ---
 const getExcludeTemplates = () => JSON.parse(localStorage.getItem('excludeTemplates') || '{}');
 const saveExcludeTemplates = (templates) => localStorage.setItem('excludeTemplates', JSON.stringify(templates));
-const saveExcludeTemplate = () => { const name = excludeTemplateNameInput.value.trim(); const listContent = excludeListInput.value.trim(); if (!name || !listContent) { alert('範本名稱和排除名單都不能為空！'); return; } const templates = getExcludeTemplates(); templates[name] = listContent; saveExcludeTemplates(templates); excludeTemplateNameInput.value = ''; renderSavedExcludeTemplates(); };
-const loadExcludeTemplate = (name) => { const templates = getExcludeTemplates(); const listContent = templates[name]; if (listContent) { excludeListInput.value = listContent; } };
-const deleteExcludeTemplate = (name) => { const templates = getExcludeTemplates(); delete templates[name]; saveExcludeTemplates(templates); renderSavedExcludeTemplates(); };
-const renderSavedExcludeTemplates = () => { const templates = getExcludeTemplates(); excludeTemplateButtonsContainer.innerHTML = ''; for (const name in templates) { const container = document.createElement('div'); container.className = 'custom-template flex items-center rounded-lg'; container.style.backgroundColor = 'var(--secondary-color)'; const button = document.createElement('button'); button.textContent = name; button.className = 'px-4 py-2 text-sm'; button.addEventListener('click', () => loadExcludeTemplate(name)); const deleteBtn = document.createElement('button'); deleteBtn.textContent = '✕'; deleteBtn.className = 'px-2 py-2 text-sm'; deleteBtn.style.color = 'var(--danger-color)'; deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteExcludeTemplate(name); }); container.appendChild(button); container.appendChild(deleteBtn); excludeTemplateButtonsContainer.appendChild(container); } };
+function saveExcludeTemplate() { const name = excludeTemplateNameInput.value.trim(); const listContent = excludeListInput.value.trim(); if (!name || !listContent) { alert('範本名稱和排除名單都不能為空！'); return; } const templates = getExcludeTemplates(); templates[name] = listContent; saveExcludeTemplates(templates); excludeTemplateNameInput.value = ''; renderSavedExcludeTemplates(); } 
+function loadExcludeTemplate(name) { const templates = getExcludeTemplates(); const listContent = templates[name]; if (listContent) { excludeListInput.value = listContent; } }
+function deleteExcludeTemplate(name) { const templates = getExcludeTemplates(); delete templates[name]; saveExcludeTemplates(templates); renderSavedExcludeTemplates(); }
+function renderSavedExcludeTemplates() { const templates = getExcludeTemplates(); excludeTemplateButtonsContainer.innerHTML = ''; for (const name in templates) { const container = document.createElement('div'); container.className = 'custom-template flex items-center rounded-lg'; container.style.backgroundColor = 'var(--secondary-color)'; const button = document.createElement('button'); button.textContent = name; button.className = 'px-4 py-2 text-sm'; button.addEventListener('click', () => loadExcludeTemplate(name)); const deleteBtn = document.createElement('button'); deleteBtn.textContent = '✕'; deleteBtn.className = 'px-2 py-2 text-sm'; deleteBtn.style.color = 'var(--danger-color)'; deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteExcludeTemplate(name); }); container.appendChild(button); container.appendChild(deleteBtn); excludeTemplateButtonsContainer.appendChild(container); } }
 
-// --- TITLE TEMPLATE FUNCTIONS ---
 const getTitleTemplates = () => JSON.parse(localStorage.getItem('titleTemplates') || '{}');
 const saveTitleTemplates = (templates) => localStorage.setItem('titleTemplates', JSON.stringify(templates));
-const saveTitleTemplate = () => { const name = titleTemplateNameInput.value.trim(); const title = titleInput.value.trim(); if (!name || !title) { alert('範本名稱和活動標題都不能為空！'); return; } const templates = getTitleTemplates(); templates[name] = title; saveTitleTemplates(templates); titleTemplateNameInput.value = ''; renderSavedTitleTemplates(); };
-const loadTitleTemplate = (name) => { const templates = getTitleTemplates(); const title = templates[name]; if (title) { titleInput.value = title; titleInput.dispatchEvent(new Event('input')); } };
-const deleteTitleTemplate = (name) => { const templates = getTitleTemplates(); delete templates[name]; saveTitleTemplates(templates); renderSavedTitleTemplates(); };
-const renderSavedTitleTemplates = () => { const templates = getTitleTemplates(); titleTemplateButtonsContainer.innerHTML = ''; for (const name in templates) { const container = document.createElement('div'); container.className = 'custom-template flex items-center rounded-lg'; container.style.backgroundColor = 'var(--secondary-color)'; const button = document.createElement('button'); button.textContent = name; button.className = 'px-4 py-2 text-sm'; button.addEventListener('click', () => loadTitleTemplate(name)); const deleteBtn = document.createElement('button'); deleteBtn.textContent = '✕'; deleteBtn.className = 'px-2 py-2 text-sm'; deleteBtn.style.color = 'var(--danger-color)'; deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteTitleTemplate(name); }); container.appendChild(button); container.appendChild(deleteBtn); titleTemplateButtonsContainer.appendChild(container); } };
+function saveTitleTemplate() { const name = titleTemplateNameInput.value.trim(); const title = titleInput.value.trim(); if (!name || !title) { alert('範本名稱和活動標題都不能為空！'); return; } const templates = getTitleTemplates(); templates[name] = title; saveTitleTemplates(templates); titleTemplateNameInput.value = ''; renderSavedTitleTemplates(); }
+function loadTitleTemplate(name) { const templates = getTitleTemplates(); const title = templates[name]; if (title) { titleInput.value = title; titleInput.dispatchEvent(new Event('input')); } }
+function deleteTitleTemplate(name) { const templates = getTitleTemplates(); delete templates[name]; saveTitleTemplates(templates); renderSavedTitleTemplates(); }
+function renderSavedTitleTemplates() { const templates = getTitleTemplates(); titleTemplateButtonsContainer.innerHTML = ''; for (const name in templates) { const container = document.createElement('div'); container.className = 'custom-template flex items-center rounded-lg'; container.style.backgroundColor = 'var(--secondary-color)'; const button = document.createElement('button'); button.textContent = name; button.className = 'px-4 py-2 text-sm'; button.addEventListener('click', () => loadTitleTemplate(name)); const deleteBtn = document.createElement('button'); deleteBtn.textContent = '✕'; deleteBtn.className = 'px-2 py-2 text-sm'; deleteBtn.style.color = 'var(--danger-color)'; deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteTitleTemplate(name); }); container.appendChild(button); container.appendChild(deleteBtn); titleTemplateButtonsContainer.appendChild(container); } }
 
-// --- PRIZE TEMPLATE FUNCTIONS ---
 const getPrizeTemplates = () => JSON.parse(localStorage.getItem('prizeTemplates') || '{}');
 const savePrizeTemplates = (templates) => localStorage.setItem('prizeTemplates', JSON.stringify(templates));
-const savePrizeTemplate = () => { const name = templateNameInput.value.trim(); if (!name) { alert('請為您的獎項範本命名！'); return; } const prizeRows = prizesContainer.querySelectorAll('.prize-row'); const currentPrizes = Array.from(prizeRows).map(row => ({ name: row.querySelector('.prize-name').value, quantity: row.querySelector('.prize-quantity').value })); if (currentPrizes.length === 0) { alert('沒有可儲存的獎項！'); return; } const templates = getPrizeTemplates(); templates[name] = currentPrizes; savePrizeTemplates(templates); templateNameInput.value = ''; renderSavedTemplates(); };
-const loadPrizeTemplate = (name) => { const templates = getPrizeTemplates(); const template = templates[name]; if (template) { clearPrizes(); template.forEach(prize => addPrizeRow(prize.name, prize.quantity)); } };
-const deletePrizeTemplate = (name) => { const templates = getPrizeTemplates(); delete templates[name]; savePrizeTemplates(templates); renderSavedTemplates(); };
-const renderSavedTemplates = () => { const templates = getPrizeTemplates(); templateButtonsContainer.innerHTML = ''; for (const name in templates) { const container = document.createElement('div'); container.className = 'custom-template flex items-center rounded-lg'; container.style.backgroundColor = 'var(--secondary-color)'; const button = document.createElement('button'); button.textContent = name; button.className = 'px-4 py-2 text-sm'; button.addEventListener('click', () => loadPrizeTemplate(name)); const deleteBtn = document.createElement('button'); deleteBtn.textContent = '✕'; deleteBtn.className = 'px-2 py-2 text-sm'; deleteBtn.style.color = 'var(--danger-color)'; deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deletePrizeTemplate(name); }); container.appendChild(button); container.appendChild(deleteBtn); templateButtonsContainer.appendChild(container); } };
+function savePrizeTemplate() { const name = templateNameInput.value.trim(); if (!name) { alert('請為您的獎項範本命名！'); return; } const prizeRows = prizesContainer.querySelectorAll('.prize-row'); const currentPrizes = Array.from(prizeRows).map(row => ({ name: row.querySelector('.prize-name').value, quantity: row.querySelector('.prize-quantity').value })); if (currentPrizes.length === 0) { alert('沒有可儲存的獎項！'); return; } const templates = getPrizeTemplates(); templates[name] = currentPrizes; savePrizeTemplates(templates); templateNameInput.value = ''; renderSavedTemplates(); }
+function loadPrizeTemplate(name) { const templates = getPrizeTemplates(); const template = templates[name]; if (template) { clearPrizes(); template.forEach(prize => addPrizeRow(prize.name, prize.quantity)); } }
+function deletePrizeTemplate(name) { const templates = getPrizeTemplates(); delete templates[name]; savePrizeTemplates(templates); renderSavedTemplates(); }
+function renderSavedTemplates() { const templates = getPrizeTemplates(); templateButtonsContainer.innerHTML = ''; for (const name in templates) { const container = document.createElement('div'); container.className = 'custom-template flex items-center rounded-lg'; container.style.backgroundColor = 'var(--secondary-color)'; const button = document.createElement('button'); button.textContent = name; button.className = 'px-4 py-2 text-sm'; button.addEventListener('click', () => loadPrizeTemplate(name)); const deleteBtn = document.createElement('button'); deleteBtn.textContent = '✕'; deleteBtn.className = 'px-2 py-2 text-sm'; deleteBtn.style.color = 'var(--danger-color)'; deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); deletePrizeTemplate(name); }); container.appendChild(button); container.appendChild(deleteBtn); templateButtonsContainer.appendChild(container); } }
 
 // --- CORE LOGIC FUNCTIONS ---
 const playTenseMusic = () => { if (!isSoundOn) return; rollingSound.currentTime = 0; const playPromise = rollingSound.play(); if (playPromise !== undefined) { playPromise.catch(error => console.error("Error playing rolling sound:", error)); } };
 const stopTenseMusic = () => { rollingSound.pause(); rollingSound.currentTime = 0; };
 const playWinnerSound = () => { if (!isSoundOn) return; winnerSound.currentTime = 0; const playPromise = winnerSound.play(); if (playPromise !== undefined) { playPromise.catch(error => console.error("Error playing winner sound:", error)); } };
 const toggleSound = () => { isSoundOn = !isSoundOn; soundToggleBtn.textContent = isSoundOn ? '🔊' : '🔇'; if(!isSoundOn) { stopTenseMusic(); } };
-const switchTab = (tabName) => {
+function switchTab(tabName) {
     activeDataSource = tabName;
     const tabs = {
         custom: { btn: tabCustomBtn, content: tabContentCustom },
@@ -412,15 +425,15 @@ const switchTab = (tabName) => {
     });
     tabs[tabName].btn.classList.add('active');
     tabs[tabName].content.classList.remove('hidden');
-};
-const switchEnvTab = (tabName) => { const tabs = { mode: { btn: tabModeBtn, content: tabContentMode }, title: { btn: tabTitleBtn, content: tabContentTitle }, prize: { btn: tabPrizeBtn, content: tabContentPrize }, theme: { btn: tabThemeBtn, content: tabContentTheme }, visual: { btn: tabVisualBtn, content: tabContentVisual }, sound: { btn: tabSoundBtn, content: tabContentSound }, effect: { btn: tabEffectBtn, content: tabContentEffect } }; Object.values(tabs).forEach(tab => { tab.btn.classList.remove('active'); tab.content.classList.add('hidden'); }); tabs[tabName].btn.classList.add('active'); tabs[tabName].content.classList.remove('hidden'); };
-const handleSimpleDrawToggle = (e) => { const isEnabled = e.target.checked; if (isEnabled) { tabPrizeBtn.classList.add('hidden'); if (tabPrizeBtn.classList.contains('active')) { switchEnvTab('mode'); } } else { tabPrizeBtn.classList.remove('hidden'); } localStorage.setItem('simpleDrawMode', isEnabled); };
-const addPrizeRow = (name = '', quantity = 1) => { const row = document.createElement('div'); row.className = 'prize-row flex items-center gap-2'; row.innerHTML = ` <input type="text" class="prize-name form-input w-full p-2 rounded" value="${name}" placeholder="獎項名稱"> <input type="number" class="prize-quantity form-input w-24 p-2 rounded" value="${quantity}" min="1" placeholder="數量"> <button class="remove-prize-btn btn-secondary px-3 py-2 rounded" style="color: var(--danger-color);">✕</button> `; prizesContainer.appendChild(row); row.querySelector('.remove-prize-btn').addEventListener('click', () => row.remove()); };
+}
+function switchEnvTab(tabName) { const tabs = { mode: { btn: tabModeBtn, content: tabContentMode }, title: { btn: tabTitleBtn, content: tabContentTitle }, prize: { btn: tabPrizeBtn, content: tabContentPrize }, theme: { btn: tabThemeBtn, content: tabContentTheme }, visual: { btn: tabVisualBtn, content: tabContentVisual }, sound: { btn: tabSoundBtn, content: tabContentSound }, effect: { btn: tabEffectBtn, content: tabContentEffect } }; Object.values(tabs).forEach(tab => { tab.btn.classList.remove('active'); tab.content.classList.add('hidden'); }); tabs[tabName].btn.classList.add('active'); tabs[tabName].content.classList.remove('hidden'); } 
+function handleSimpleDrawToggle(e) { const isEnabled = e.target.checked; if (isEnabled) { tabPrizeBtn.classList.add('hidden'); if (tabPrizeBtn.classList.contains('active')) { switchEnvTab('mode'); } } else { tabPrizeBtn.classList.remove('hidden'); } localStorage.setItem('simpleDrawMode', isEnabled); } 
+function addPrizeRow(name = '', quantity = 1) { const row = document.createElement('div'); row.className = 'prize-row flex items-center gap-2'; row.innerHTML = ` <input type="text" class="prize-name form-input w-full p-2 rounded" value="${name}" placeholder="獎項名稱"> <input type="number" class="prize-quantity form-input w-24 p-2 rounded" value="${quantity}" min="1" placeholder="數量"> <button class="remove-prize-btn btn-secondary px-3 py-2 rounded" style="color: var(--danger-color);">✕</button> `; prizesContainer.appendChild(row); row.querySelector('.remove-prize-btn').addEventListener('click', () => row.remove()); }
 const clearPrizes = () => { prizesContainer.innerHTML = ''; };
-const handleUrlParams = () => { const params = new URLSearchParams(window.location.search); if (params.has('sheetUrl') && params.has('sheetName') && params.has('column')) { sheetUrlInput.value = params.get('sheetUrl'); sheetNameInput.value = params.get('sheetName'); columnLetterInput.value = params.get('column'); handleLoadData(); } };
-const readAndValidatePrizes = () => { prizes = []; const isSimpleMode = simpleDrawToggle.checked; if (isSimpleMode) { return true; } const prizeRows = prizesContainer.querySelectorAll('.prize-row'); if (prizeRows.length === 0) { return true; } let totalPrizeQuantity = 0; for (const row of prizeRows) { const name = row.querySelector('.prize-name').value.trim(); const quantity = parseInt(row.querySelector('.prize-quantity').value, 10); if (!name) { updateStatus('獎項名稱不可為空！', true); return false; } if (isNaN(quantity) || quantity < 1) { updateStatus(`獎項「${name}」的數量必須是正整數！`, true); return false; } prizes.push({ name, quantity, winners: [] }); totalPrizeQuantity += quantity; } if (participants.length > 0 && totalPrizeQuantity > participants.length) { updateStatus(`警告：獎項總數 (${totalPrizeQuantity}) 大於參與人數 (${participants.length})！`, true); } return true; };
+function handleUrlParams() { const params = new URLSearchParams(window.location.search); if (params.has('sheetUrl') && params.has('sheetName') && params.has('column')) { sheetUrlInput.value = params.get('sheetUrl'); sheetNameInput.value = params.get('sheetName'); columnLetterInput.value = params.get('column'); handleLoadData(); } }
+function readAndValidatePrizes() { prizes = []; const isSimpleMode = simpleDrawToggle.checked; if (isSimpleMode) { return true; } const prizeRows = prizesContainer.querySelectorAll('.prize-row'); if (prizeRows.length === 0) { return true; } let totalPrizeQuantity = 0; for (const row of prizeRows) { const name = row.querySelector('.prize-name').value.trim(); const quantity = parseInt(row.querySelector('.prize-quantity').value, 10); if (!name) { updateStatus('獎項名稱不可為空！', true); return false; } if (isNaN(quantity) || quantity < 1) { updateStatus(`獎項「${name}」的數量必須是正整數！`, true); return false; } prizes.push({ name, quantity, winners: [] }); totalPrizeQuantity += quantity; } if (participants.length > 0 && totalPrizeQuantity > participants.length) { updateStatus(`警告：獎項總數 (${totalPrizeQuantity}) 大於參與人數 (${participants.length})！`, true); } return true; }
 
-const handleLoadData = async () => {
+async function handleLoadData() {
     loadButton.disabled = true;
     updateStatus('正在處理名單...');
     if (activeDataSource === 'cloud') {
@@ -430,69 +443,112 @@ const handleLoadData = async () => {
     } else {
         loadFromCustomInput();
     }
-};
+}
 
-const finalizeDataLoading = (rawList) => {
-    // --- 第一階段：執行排除名單過濾 ---
-    const excludeRaw = excludeListInput.value;
-    const excludeNamesArr = excludeRaw.split(/[,，\n]+/).map(name => name.trim()).filter(name => name.length > 0);
-    const excludeNames = new Set(excludeNamesArr);
-    
-    const filteredList = rawList.filter(name => !excludeNames.has(name));
-    pendingParticipants = filteredList;
-    
-    if (filterDuplicatesToggle.checked) {
-        const counts = {};
-        pendingParticipants.forEach(name => { counts[name] = (counts[name] || 0) + 1; });
-        const duplicates = Object.entries(counts).filter(([name, count]) => count > 1);
-        if (duplicates.length > 0) { showDuplicatesModal(duplicates); return; }
+function showColumnSelectionModal(headers, nameColIndex) {
+    columnSelectionContainer.innerHTML = '';
+    const checkboxIdPrefix = activeDataSource === 'cloud' ? 'cloud-smart-filter' : 'csv-smart-filter';
+    const smartFilterEnabled = document.getElementById(checkboxIdPrefix) ? document.getElementById(checkboxIdPrefix).checked : true;
+
+    if (!smartFilterEnabled) {
+        handleColumnSelectionConfirmed([]); 
+        return;
     }
 
-    participants = [...pendingParticipants];
-    if (participants.length > 0 && readAndValidatePrizes()) {
-        updateStatus(`成功載入 ${participants.length} 位參與者！` + (excludeNames.size ? ` (已排除 ${rawList.length - filteredList.length} 人)` : ''), false);
-        switchToLotteryView();
-    } else {
-        if (participants.length === 0) updateStatus(`載入的名單中沒有有效的名字。`, true);
-        loadButton.disabled = false;
-    }
-};
+    const keywords = /phone|mobile|tel|cell|手機|電話|email|mail|信箱|id|編號|學號|工號|身分證|uid/i;
 
-const showDuplicatesModal = (duplicates) => {
-    duplicatesList.innerHTML = '';
-    duplicates.forEach(([name, count]) => {
-        const item = document.createElement('div');
-        item.className = 'duplicate-item';
-        item.innerHTML = `<span>${name}</span><span class="duplicate-count">${count} 次</span>`;
-        duplicatesList.appendChild(item);
+    let hasOptions = false;
+    headers.forEach((header, index) => {
+        if (index === nameColIndex) return; 
+
+        hasOptions = true;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center p-2 rounded hover:bg-white/10';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `col-select-${index}`;
+        checkbox.value = index;
+        checkbox.className = 'form-checkbox h-5 w-5 text-red-500 rounded focus:ring-0';
+        
+        if (keywords.test(header)) {
+            checkbox.checked = true;
+        }
+
+        const label = document.createElement('label');
+        label.htmlFor = `col-select-${index}`;
+        label.className = 'ml-3 cursor-pointer select-none flex-grow text-lg';
+        label.textContent = header || `(無標題 - 第${index+1}欄)`;
+
+        wrapper.appendChild(checkbox);
+        wrapper.appendChild(label);
+        columnSelectionContainer.appendChild(wrapper);
     });
-    duplicatesModal.classList.remove('hidden');
-};
 
-const handleDuplicateAction = (action) => {
-    const counts = {};
-    pendingParticipants.forEach(name => { counts[name] = (counts[name] || 0) + 1; });
-    const duplicateNames = new Set(Object.entries(counts).filter(([name, count]) => count > 1).map(([name, count]) => name));
-
-    if (action === 'deleteAll') { participants = pendingParticipants.filter(name => !duplicateNames.has(name)); } 
-    else if (action === 'keepOne') { participants = [...new Set(pendingParticipants)]; }
-
-    duplicatesModal.classList.add('hidden');
-    if (participants.length > 0 && readAndValidatePrizes()) {
-        updateStatus(`處理完畢！最終載入 ${participants.length} 位參與者。`, false);
-        switchToLotteryView();
-    } else {
-        updateStatus(`名單處理後已無有效人名。`, true);
-        loadButton.disabled = false;
+    if (!hasOptions) {
+        handleColumnSelectionConfirmed([]);
+        return;
     }
-};
 
-const loadFromCustomInput = () => { 
-    const rawList = customListInput.value.split(/[,，\n]+/).map(name => name.trim()).filter(name => name.length > 0);
+    columnSelectionModal.classList.remove('hidden');
+}
+
+function handleColumnSelectionConfirmed(preSelectedIndices = null) {
+    let selectedIndices = [];
+    
+    if (Array.isArray(preSelectedIndices)) {
+        selectedIndices = preSelectedIndices;
+    } else {
+        const checkboxes = columnSelectionContainer.querySelectorAll('input[type="checkbox"]:checked');
+        checkboxes.forEach(cb => selectedIndices.push(parseInt(cb.value)));
+        columnSelectionModal.classList.add('hidden');
+    }
+
+    if (!pendingLoadedData) return;
+
+    const { rows, nameColIndex } = pendingLoadedData;
+    
+    const rawList = rows.map((row, index) => {
+        if (index === 0) return null; // Skip header
+
+        const name = row[nameColIndex];
+        if (!name) return null;
+
+        const smartValues = selectedIndices.map(idx => row[idx] ? row[idx].trim().replace(/\D/g, '') : '').filter(v => v !== '');
+        return { name, smartValues, originalRow: row };
+    }).filter(item => item !== null);
+
     finalizeDataLoading(rawList);
-};
+    pendingLoadedData = null; // Clean up
+}
 
-const loadFromCloud = async () => {
+function parseCSV(text) {
+    const rows = [];
+    let currentRow = [];
+    let currentCell = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+        if (inQuotes) {
+            if (char === '"' && nextChar === '"') { currentCell += '"'; i++; }
+            else if (char === '"') { inQuotes = false; }
+            else { currentCell += char; }
+        } else {
+            if (char === '"') { inQuotes = true; }
+            else if (char === ',') { currentRow.push(currentCell.trim()); currentCell = ''; }
+            else if (char === '\n' || char === '\r') {
+                if (currentCell || currentRow.length > 0) { currentRow.push(currentCell.trim()); rows.push(currentRow); }
+                currentRow = []; currentCell = '';
+                if (char === '\r' && nextChar === '\n') i++;
+            } else { currentCell += char; }
+        }
+    }
+    if (currentCell || currentRow.length > 0) { currentRow.push(currentCell.trim()); rows.push(currentRow); }
+    return rows;
+}
+
+async function loadFromCloud() {
     const sheetUrl = sheetUrlInput.value.trim();
     const sheetName = sheetNameInput.value.trim();
     const columnLetter = columnLetterInput.value.trim().toUpperCase();
@@ -508,45 +564,218 @@ const loadFromCloud = async () => {
         const response = await fetch(proxyUrl);
         if (!response.ok) throw new Error(`網路回應錯誤: ${response.statusText}`);
         const csvText = await response.text();
-        const columnIndex = columnLetter.charCodeAt(0) - 'A'.charCodeAt(0);
-        const rawList = csvText.split('\n').slice(1).map(row => {
-            const columns = row.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
-            return columns[columnIndex] || null;
-        }).filter(name => name && name.length > 0);
-        if (rawList.length > 0) { finalizeDataLoading(rawList); } 
-        else { updateStatus(`在 ${columnLetter} 欄找不到任何資料，請確認工作表與欄位名稱。`, true); loadButton.disabled = false; }
+        
+        const rows = parseCSV(csvText);
+        if (rows.length === 0) throw new Error("CSV 資料為空");
+
+        const headers = rows[0]; 
+        const nameColIndex = columnLetter.charCodeAt(0) - 'A'.charCodeAt(0);
+        
+        pendingLoadedData = { rows, nameColIndex };
+        showColumnSelectionModal(headers, nameColIndex);
+
     } catch (error) {
         console.error('讀取共用連結時發生錯誤:', error);
         updateStatus('讀取失敗！請檢查網址是否正確，以及網路連線。', true);
         loadButton.disabled = false;
     }
-};
+}
 
-const loadFromPublishedCsv = async () => {
+async function loadFromPublishedCsv() {
     const url = csvUrlInput.value.trim();
     if (!url) { updateStatus('請輸入「發布到網路」的 CSV 網址！', true); loadButton.disabled = false; return; }
     if (!url.includes('/pub?gid=') || !url.includes('output=csv')) { updateStatus('網址格式錯誤！請確認是「發布到網路」並選擇 CSV 格式的網址。', true); loadButton.disabled = false; return; }
     const columnLetter = csvColumnLetterInput.value.trim().toUpperCase();
-    const columnIndex = columnLetter.charCodeAt(0) - 'A'.charCodeAt(0);
+    const nameColIndex = columnLetter.charCodeAt(0) - 'A'.charCodeAt(0);
     updateStatus(`正在從發布的連結讀取名單 (${columnLetter}欄)...`);
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`網路回應錯誤: ${response.statusText}`);
         const csvText = await response.text();
-        const rawList = csvText.split('\n').map(row => {
-            const columns = row.split(',');
-            return columns[columnIndex] ? columns[columnIndex].trim().replace(/^"|"$/g, '') : null;
-        }).filter(name => name && name.length > 0);
-        if (rawList.length > 0) { finalizeDataLoading(rawList); } 
-        else { updateStatus(`在指定的 CSV 網址 (${columnLetter}欄) 中找不到任何資料。`, true); loadButton.disabled = false; }
+        
+        const rows = parseCSV(csvText);
+        if (rows.length === 0) throw new Error("CSV 資料為空");
+        
+        const headers = rows[0];
+        
+        pendingLoadedData = { rows, nameColIndex };
+        showColumnSelectionModal(headers, nameColIndex);
+
     } catch (error) {
         console.error('讀取發布的 CSV 時發生錯誤:', error);
         updateStatus('讀取失敗！請檢查網址是否正確，以及網路連線。', true);
         loadButton.disabled = false;
     }
-};
+}
 
-const handleDrawWinner = () => {
+function finalizeDataLoading(rawList) {
+    const excludeRaw = excludeListInput.value;
+    const excludeNamesArr = excludeRaw.split(/[,，\n]+/ ).map(name => name.trim()).filter(name => name.length > 0);
+    const excludeNames = new Set(excludeNamesArr);
+    
+    let activeList = rawList.filter(item => !excludeNames.has(item.name));
+
+    const nameGroups = {};
+    activeList.forEach(item => {
+        if (!nameGroups[item.name]) nameGroups[item.name] = [];
+        nameGroups[item.name].push(item);
+    });
+
+    const processedList = [];
+
+    Object.keys(nameGroups).forEach(name => {
+        const group = nameGroups[name];
+        const clusters = []; 
+
+        group.forEach(item => {
+            let matchedClusterIndex = -1;
+            
+            for (let i = 0; i < clusters.length; i++) {
+                const cluster = clusters[i];
+                const representative = cluster[0];
+                
+                const hasIntersection = item.smartValues.some(v => v && representative.smartValues.includes(v));
+                const bothEmpty = item.smartValues.length === 0 && representative.smartValues.length === 0;
+
+                if (hasIntersection || bothEmpty) {
+                    matchedClusterIndex = i;
+                    break; 
+                }
+            }
+
+            if (matchedClusterIndex !== -1) {
+                clusters[matchedClusterIndex].push(item);
+            } else {
+                clusters.push([item]);
+            }
+        });
+
+        clusters.forEach((cluster, index) => {
+            const uniqueKey = `${name}_${index}`;
+            let bestSuffix = '';
+            const allValues = new Set(cluster.flatMap(i => i.smartValues));
+            for (const v of allValues) {
+                if (v.includes('@')) { bestSuffix = v.split('@')[0]; break; }
+            }
+            if (!bestSuffix) {
+                for (const v of allValues) {
+                    if (/\d{4,}/.test(v)) { bestSuffix = v.slice(-4); break; }
+                }
+            }
+            if (!bestSuffix && allValues.size > 0) bestSuffix = [...allValues][0];
+
+            cluster.forEach(item => {
+                item.uniqueKey = uniqueKey;
+                item.displaySuffix = bestSuffix;
+                processedList.push(item);
+            });
+        });
+    });
+
+    pendingParticipants = processedList;
+    
+    if (filterDuplicatesToggle.checked) {
+        const counts = {};
+        pendingParticipants.forEach(item => { counts[item.uniqueKey] = (counts[item.uniqueKey] || 0) + 1; });
+        
+        const duplicateKeys = new Set(Object.entries(counts).filter(([k, v]) => v > 1).map(([k]) => k));
+        
+        if (duplicateKeys.size > 0) {
+            const duplicatesToDisplay = [];
+            duplicateKeys.forEach(key => {
+                const item = pendingParticipants.find(i => i.uniqueKey === key);
+                const displayName = item.displaySuffix ? `${item.name} (${item.displaySuffix})` : item.name;
+                duplicatesToDisplay.push([displayName, counts[key]]);
+            });
+            showDuplicatesModal(duplicatesToDisplay); 
+            return;
+        }
+    }
+
+    resolveNameCollisionsAndSetParticipants(pendingParticipants);
+}
+
+function resolveNameCollisionsAndSetParticipants(objList) {
+    const nameGroups = {};
+    objList.forEach(item => {
+        if (!nameGroups[item.name]) nameGroups[item.name] = [];
+        if (!nameGroups[item.name].some(existing => existing.uniqueKey === item.uniqueKey)) {
+             nameGroups[item.name].push(item);
+        }
+    });
+    
+    const finalNames = [];
+    
+    Object.values(nameGroups).forEach(group => {
+        if (group.length === 1) {
+            finalNames.push(group[0].name);
+        } else {
+            group.forEach((item, index) => {
+                let newName = item.name;
+                if (item.displaySuffix) {
+                    newName = `${item.name} (${item.displaySuffix})`;
+                } else {
+                    newName = `${item.name} (${index + 1})`;
+                }
+                finalNames.push(newName);
+            });
+        }
+    });
+
+    participants = finalNames;
+
+    const excludeRaw = excludeListInput.value;
+    const excludeNamesArr = excludeRaw.split(/[,，\n]+/ ).map(name => name.trim()).filter(name => name.length > 0);
+    
+    if (participants.length > 0 && readAndValidatePrizes()) {
+        updateStatus(`成功載入 ${participants.length} 位參與者！` + (excludeNamesArr.length ? ` (已排除名單上的 ${excludeNamesArr.length} 人)` : ''), false);
+        switchToLotteryView();
+    } else {
+        if (participants.length === 0) updateStatus(`載入的名單中沒有有效的名字。`, true);
+        loadButton.disabled = false;
+    }
+}
+
+function loadFromCustomInput() { 
+    const rawStrings = customListInput.value.split(/[,，\n]+/ ).map(name => name.trim()).filter(name => name.length > 0);
+    const rawList = rawStrings.map(name => ({ name, uniqueKey: name, smartValues: [] }));
+    finalizeDataLoading(rawList);
+}
+
+function showDuplicatesModal(duplicates) {
+    duplicatesList.innerHTML = '';
+    duplicates.forEach(([name, count]) => {
+        const item = document.createElement('div');
+        item.className = 'duplicate-item';
+        item.innerHTML = `<span>${name}</span><span class="duplicate-count">${count} 次</span>`;
+        duplicatesList.appendChild(item);
+    });
+    duplicatesModal.classList.remove('hidden');
+}
+
+function handleDuplicateAction(action) {
+    const counts = {};
+    pendingParticipants.forEach(item => { counts[item.uniqueKey] = (counts[item.uniqueKey] || 0) + 1; });
+    
+    let finalObjList = [];
+
+    if (action === 'deleteAll') { 
+        finalObjList = pendingParticipants.filter(item => counts[item.uniqueKey] === 1); 
+    } else if (action === 'keepOne') { 
+        const seenKeys = new Set();
+        pendingParticipants.forEach(item => {
+            if (!seenKeys.has(item.uniqueKey)) {
+                seenKeys.add(item.uniqueKey);
+                finalObjList.push(item);
+            }
+        });
+    }
+
+    duplicatesModal.classList.add('hidden');
+    resolveNameCollisionsAndSetParticipants(finalObjList);
+}
+
+function handleDrawWinner() {
     if (drawButton.textContent === '重置' || drawButton.textContent === '結束') {
         if (confirm('您確定要結束本次活動並重置嗎？')) { resetApp(); }
         return;
@@ -561,7 +790,6 @@ const handleDrawWinner = () => {
     const currentPrize = prizes[currentPrizeIndex];
     if (!currentPrize) return;
 
-    // 計算批次抽取人數
     let batchSize = batchDrawToggle.checked ? (parseInt(batchSizeInput.value, 10) || 1) : 1;
     const remainingInPrize = currentPrize.quantity - currentPrize.winners.length;
     if (batchSize > remainingInPrize) batchSize = remainingInPrize;
@@ -627,11 +855,10 @@ const handleDrawWinner = () => {
             revealWinners();
         }
     }, 4000);
-};
+}
 
-const setupThemes = () => {
-    const themeContainer = document.getElementById('theme-selector');
-    themeContainer.innerHTML = '';
+function setupThemes() {
+    themeSelector.innerHTML = '';
     themes.forEach(theme => {
         const button = document.createElement('button');
         button.className = 'theme-button';
@@ -639,21 +866,21 @@ const setupThemes = () => {
         button.dataset.theme = theme.id;
         button.style.background = `linear-gradient(45deg, ${theme.colors[0]}, ${theme.colors[1]})`;
         button.addEventListener('click', () => { applyTheme(theme.id); });
-        themeContainer.appendChild(button);
+        themeSelector.appendChild(button);
     });
-};
+}
 
-const applyTheme = (themeId) => {
+function applyTheme(themeId) {
     document.body.className = document.body.className.replace(/theme-\w+/g, '');
     if (themeId !== 'izakaya') { document.body.classList.add(`theme-${themeId}`); }
     localStorage.setItem('lotteryTheme', themeId);
     document.querySelectorAll('.theme-button').forEach(btn => { btn.classList.toggle('active', btn.dataset.theme === themeId); });
-};
+}
 
-const loadTheme = () => { const savedTheme = localStorage.getItem('lotteryTheme') || 'candy'; applyTheme(savedTheme); };
-const updateStatus = (message, isError = false) => { statusMessage.textContent = message; statusMessage.style.color = isError ? 'var(--danger-color)' : 'var(--accent-color)'; };
+function loadTheme() { const savedTheme = localStorage.getItem('lotteryTheme') || 'candy'; applyTheme(savedTheme); }
+function updateStatus(message, isError = false) { statusMessage.textContent = message; statusMessage.style.color = isError ? 'var(--danger-color)' : 'var(--accent-color)'; }
 
-const switchToLotteryView = () => {
+function switchToLotteryView() {
     settingsSection.classList.add('hidden');
     lotterySection.classList.remove('hidden');
     resetBtn.classList.remove('hidden');
@@ -665,9 +892,9 @@ const switchToLotteryView = () => {
         participantLabel.textContent = '剩餘摸彩人數';
     }
     updateParticipantCount(); updatePrizeDisplay(); saveSession();
-};
+}
 
-const adjustPrizeNameFontSize = () => {
+function adjustPrizeNameFontSize() {
     const nameElement = document.getElementById('finished-prize-name');
     if (!nameElement) return;
     const container = winnerDisplay;
@@ -679,15 +906,15 @@ const adjustPrizeNameFontSize = () => {
         fontSize -= step;
         nameElement.style.fontSize = `${fontSize}rem`;
     }
-};
+}
 
-const updatePrizeDisplay = () => {
+function updatePrizeDisplay() {
     const isSimpleMode = simpleDrawToggle.checked;
     const allPrizesDrawn = prizes.every(p => p.winners.length >= p.quantity);
     if (allPrizesDrawn) {
         if (isSimpleMode) { currentPrizeDisplay.textContent = '所有人都已抽出！'; drawButton.textContent = '結束'; } 
         else { currentPrizeDisplay.textContent = '所有項目已抽完！'; drawButton.textContent = '抽獎結束'; }
-        drawButton.disabled = false; exportCsvBtn.classList.remove('hidden'); updateWinnersList(); return;
+        drawButton.disabled = false; exportCsvBtn.classList.remove('hidden'); updateWinnersList(); return; 
     }
     const currentPrize = prizes[currentPrizeIndex];
     if (isSimpleMode) { currentPrizeDisplay.textContent = '幸運的你'; } 
@@ -705,11 +932,11 @@ const updatePrizeDisplay = () => {
             else { drawButton.textContent = buttonPhrases[Math.floor(Math.random() * buttonPhrases.length)]; }
         }
     }
-};
+}
 
-const updateParticipantCount = () => { participantCountSpan.textContent = participants.length; };
+function updateParticipantCount() { participantCountSpan.textContent = participants.length; }
 
-const handleRedraw = (prizeIndex, winnerIndex) => {
+function handleRedraw(prizeIndex, winnerIndex) {
     const prize = prizes[prizeIndex];
     if (!prize) return;
     const winnerToRedraw = prize.winners.splice(winnerIndex, 1)[0];
@@ -721,9 +948,9 @@ const handleRedraw = (prizeIndex, winnerIndex) => {
     winnerDisplay.style.fontSize = "4rem";
     exportCsvBtn.classList.add('hidden');
     updateParticipantCount(); updateWinnersList(); updatePrizeDisplay(); saveSession();
-};
+}
 
-const updateWinnersList = () => {
+function updateWinnersList() {
     const isSimpleMode = simpleDrawToggle.checked;
     const hasAnyWinners = prizes.some(p => p.winners.length > 0);
     const allPrizesDrawn = prizes.every(p => p.winners.length >= p.quantity);
@@ -771,11 +998,10 @@ const updateWinnersList = () => {
             }
         });
     }
-};
+}
 
-const exportResultsToCsv = () => {
+function exportResultsToCsv() {
     const isSimpleMode = simpleDrawToggle.checked;
-    // 修正標頭：增加「領取獎項」
     let csvContent = isSimpleMode ? '\uFEFF"抽出順序","姓名","是否領取"\n' : '\uFEFF"獎項","得獎人","領取獎項"\n';
     
     prizes.forEach(prize => {
@@ -802,9 +1028,9 @@ const exportResultsToCsv = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-};
+}
 
-const resetApp = () => {
+function resetApp() {
     settingsSection.classList.remove('hidden'); lotterySection.classList.add('hidden'); resetBtn.classList.add('hidden');
     participants = []; prizes = []; currentPrizeIndex = 0;
     winnerDisplay.textContent = '準備開始！'; winnerDisplay.classList.remove('winner-reveal');
@@ -818,9 +1044,9 @@ const resetApp = () => {
     csvUrlInput.value = ''; csvColumnLetterInput.value = 'A'; customListInput.value = ''; excludeListInput.value = '';
     prizesContainer.innerHTML = ''; addPrizeRow('三獎', 3); addPrizeRow('二獎', 2); addPrizeRow('頭獎', 1);
     loadButton.disabled = false; updateStatus(''); switchTab('custom'); clearSession();
-};
+}
 
-const launchConfetti = () => {
+function launchConfetti() {
     const duration = 2 * 1000; const animationEnd = Date.now() + duration;
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
     function randomInRange(min, max) { return Math.random() * (max - min) + min; }
@@ -831,6 +1057,7 @@ const launchConfetti = () => {
         confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
         confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
     }, 250);
-};
+}
 
+// Initialize the app
 init();
