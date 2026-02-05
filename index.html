@@ -76,6 +76,17 @@
                             <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 toggle-switch-bg peer-checked:bg-red-500"></div>
                         </label>
                     </div>
+
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-col">
+                            <span class="font-semibold text-lg" style="color: var(--text-color);">啟用未領獎優先排序</span>
+                            <span class="text-sm" style="color: var(--text-muted-color);">開啟後，未領獎者將自動排在上方（需手動整理）。</span>
+                        </div>
+                        <label for="sort-winners-toggle" class="inline-flex relative items-center cursor-pointer">
+                            <input type="checkbox" id="sort-winners-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 toggle-switch-bg peer-checked:bg-red-500"></div>
+                        </label>
+                    </div>
                 </div>
 
                 <div id="tab-content-title" class="hidden mt-6 space-y-4">
@@ -307,7 +318,10 @@
             </div>
              <div id="winners-list-container" class="w-full md:w-[30%] hidden">
                 <div class="card p-6 rounded-lg">
-                    <h3 id="winners-list-title" class="text-xl font-bold text-center mb-4" style="color: var(--accent-color);">🎉 得獎名單 🎉</h3>
+                    <div class="flex items-center justify-center gap-2 mb-4">
+                        <h3 id="winners-list-title" class="text-xl font-bold" style="color: var(--accent-color);">🎉 得獎名單 🎉</h3>
+                        <button id="sort-winners-btn" class="hidden text-sm px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors" title="整理名單（未領獎置頂）">⇅ 整理</button>
+                    </div>
                     <div id="winners-list" class="space-y-4 text-center text-lg">
                     </div>
                     <button id="export-csv-btn" class="hidden mt-4 btn-secondary w-full py-3 rounded-lg text-xl font-bold">匯出得獎名單</button>
@@ -320,7 +334,7 @@
     <audio id="winner-sound" src="https://hsuliang.github.io/happy.mp3" preload="auto"></audio>
     
     <footer class="fixed bottom-0 left-0 right-0 p-3 text-center text-xs backdrop-blur-sm" style="color: var(--text-muted-color); background-color: var(--footer-bg);">
-        <span>v2.9.0@2025/12/27</span> |
+        <span>v2.9.1@2026/02/05</span> |
         <span>由 Google Gemini 強力驅動</span> |
         <a href="https://bit.ly/Alaing" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">ㄚ亮笑長練功坊</a>
     </footer>
@@ -337,6 +351,27 @@
                     <button id="dup-keep-one-btn" class="btn-primary py-3 rounded-lg font-bold">留下一個</button>
                 </div>
                 <button id="dup-cancel-btn" class="w-full btn-secondary py-2 rounded-lg" style="color: var(--text-muted-color);">取消並手動修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Bonus Prize Modal -->
+    <div id="bonus-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black/70 backdrop-blur-sm p-4">
+        <div class="card max-w-md w-full p-8 rounded-lg shadow-2xl">
+            <h2 class="text-2xl font-bold mb-4" style="color: var(--accent-color);">老闆加碼</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block mb-2 font-semibold">加碼獎項名稱</label>
+                    <input type="text" id="bonus-prize-name" class="form-input w-full p-2 rounded" placeholder="例如：現金一萬元">
+                </div>
+                <div>
+                    <label class="block mb-2 font-semibold">數量 (剩餘可抽人數: <span id="bonus-remaining-count">0</span>)</label>
+                    <input type="number" id="bonus-prize-quantity" class="form-input w-full p-2 rounded" min="1" value="1">
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button id="confirm-bonus-btn" class="btn-primary w-full py-3 rounded-lg font-bold">確定加碼</button>
+                    <button id="cancel-bonus-btn" class="btn-secondary w-full py-3 rounded-lg">取消</button>
+                </div>
             </div>
         </div>
     </div>

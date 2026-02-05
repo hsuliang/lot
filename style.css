@@ -128,8 +128,35 @@ body { font-family: 'Noto Sans TC', sans-serif; background-color: var(--bg-color
 #version-modal.is-open > .modal-content { transform: scale(1); }
 .theme-button { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s ease-in-out; }
 .theme-button.active { border-color: var(--accent-color); transform: scale(1.1); box-shadow: 0 0 10px var(--accent-color); }
-.winner-tag { background-color: var(--tag-bg); }
-.winner-tag.claimed { background-color: var(--claimed-bg) !important; color: var(--claimed-text) !important; font-weight: bold; }
+.winner-tag { background-color: var(--tag-bg); transition: all 0.3s ease; position: relative; overflow: hidden; }
+.winner-tag.claimed { 
+    background-color: rgba(0, 0, 0, 0.3) !important; 
+    color: #a0aec0 !important; /* text-gray-500 */
+    opacity: 0.8;
+    transform: scale(0.98);
+}
+.winner-tag.claimed::after {
+    content: '已領';
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%) rotate(-15deg);
+    color: #e53e3e; /* Red color */
+    border: 2px solid #e53e3e;
+    padding: 2px 6px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    border-radius: 4px;
+    opacity: 0.8;
+    pointer-events: none;
+    box-shadow: 0 0 5px rgba(229, 62, 62, 0.3);
+    background-color: rgba(255, 255, 255, 0.1);
+    z-index: 10;
+}
+.winner-tag.claimed:hover {
+    opacity: 1;
+    transform: scale(1);
+}
 .tab-btn { border-color: transparent; color: var(--text-muted-color); }
 .tab-btn.active { border-color: var(--accent-color); color: var(--accent-color); }
 .toggle-switch-bg:after { background-color: white; }
@@ -148,6 +175,17 @@ input:checked + .toggle-switch-bg { background-color: var(--primary-color); }
     opacity: 1;
     color: var(--accent-color);
     transform: rotate(360deg);
+}
+
+#participant-count {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0 4px;
+    border-radius: 4px;
+}
+#participant-count:hover {
+    background-color: rgba(255, 171, 0, 0.1);
+    text-shadow: 0 0 8px var(--accent-color);
 }
 
 /* Duplicates Modal */

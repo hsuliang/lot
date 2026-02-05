@@ -82,6 +82,8 @@ const appBgOverlay = document.getElementById('app-bg-overlay');
 const simpleDrawToggle = document.getElementById('simple-draw-toggle');
 const batchDrawToggle = document.getElementById('batch-draw-toggle');
 const filterDuplicatesToggle = document.getElementById('filter-duplicates-toggle');
+const sortWinnersToggle = document.getElementById('sort-winners-toggle');
+const sortWinnersBtn = document.getElementById('sort-winners-btn');
 
 // Batch Drawing Elements
 const batchSizeInput = document.getElementById('batch-size-input');
@@ -109,6 +111,14 @@ const recoveryModal = document.getElementById('recovery-modal');
 const resumeSessionBtn = document.getElementById('resume-session-btn');
 const downloadSessionBtn = document.getElementById('download-session-btn');
 const discardSessionBtn = document.getElementById('discard-session-btn');
+
+// Bonus Prize Elements
+const bonusModal = document.getElementById('bonus-modal');
+const bonusPrizeName = document.getElementById('bonus-prize-name');
+const bonusPrizeQuantity = document.getElementById('bonus-prize-quantity');
+const bonusRemainingCount = document.getElementById('bonus-remaining-count');
+const confirmBonusBtn = document.getElementById('confirm-bonus-btn');
+const cancelBonusBtn = document.getElementById('cancel-bonus-btn');
 
 // State
 let participants = [];
@@ -179,6 +189,18 @@ function init() {
     saveTemplateBtn.addEventListener('click', savePrizeTemplate);
     clearPrizesBtn.addEventListener('click', clearPrizes);
 
+    // Bonus Prize Actions (Hidden trigger on participant count)
+    participantCountSpan.addEventListener('click', () => {
+        bonusRemainingCount.textContent = participants.length;
+        bonusPrizeName.value = '';
+        bonusPrizeQuantity.value = 1;
+        bonusModal.classList.remove('hidden');
+    });
+    cancelBonusBtn.addEventListener('click', () => {
+        bonusModal.classList.add('hidden');
+    });
+    confirmBonusBtn.addEventListener('click', handleAddBonusPrize);
+
     // Other settings
     soundToggleBtn.addEventListener('click', toggleSound);
     simpleDrawToggle.addEventListener('change', handleSimpleDrawToggle);
@@ -193,6 +215,18 @@ function init() {
     filterDuplicatesToggle.addEventListener('change', (e) => {
         localStorage.setItem('filterDuplicates', e.target.checked);
     });
+
+    // Sort Winners Toggle
+    sortWinnersToggle.addEventListener('change', (e) => {
+        localStorage.setItem('sortWinnersEnabled', e.target.checked);
+        updateWinnersList(true); // Refresh list to show/hide button
+    });
+    
+    // Manual Sort Button
+    sortWinnersBtn.addEventListener('click', () => {
+        updateWinnersList(true); // Force sort
+    });
+
 
     // Duplicate Modal Actions
     dupDeleteAllBtn.addEventListener('click', () => handleDuplicateAction('deleteAll'));
@@ -245,6 +279,9 @@ function init() {
     const savedFilter = localStorage.getItem('filterDuplicates') === 'true';
     filterDuplicatesToggle.checked = savedFilter;
 
+    const savedSort = localStorage.getItem('sortWinnersEnabled') === 'true';
+    sortWinnersToggle.checked = savedSort;
+
     // Check for existing session
     const savedSession = localStorage.getItem('lottery_session');
     if (savedSession) {
@@ -253,6 +290,37 @@ function init() {
 
     window.addEventListener('resize', () => { if (document.getElementById('finished-prize-name')) { adjustPrizeNameFontSize(); } });
 };
+
+function handleAddBonusPrize() {
+    const name = bonusPrizeName.value.trim();
+    const quantity = parseInt(bonusPrizeQuantity.value, 10);
+
+    if (!name) {
+        alert('請輸入獎項名稱！');
+        return;
+    }
+    if (isNaN(quantity) || quantity <= 0) {
+        alert('請輸入有效的數量！');
+        return;
+    }
+    if (quantity > participants.length) {
+        alert(`剩餘人數不足！目前僅剩 ${participants.length} 人。`);
+        return;
+    }
+
+    const newPrize = { name, quantity, winners: [] };
+    prizes.push(newPrize);
+    
+    // Check if we need to reset the completed state
+    // If the button says "Reset" or "Finished", we need to wake it up
+    // updatePrizeDisplay will handle finding the next available prize (which is this new one)
+    updatePrizeDisplay();
+    saveSession();
+    bonusModal.classList.add('hidden');
+    
+    // Explicitly update status to show something happened
+    updateStatus(`已加碼：${name} (${quantity}名)`);
+}
 
 // --- VISUAL CUSTOMIZATION FUNCTIONS ---
 function handleImageUpload(event, storageKey) {
@@ -295,6 +363,7 @@ function saveSession() {
         currentPrizeIndex,
         simpleDrawMode: simpleDrawToggle.checked,
         batchDrawEnabled: batchDrawToggle.checked,
+        sortWinnersEnabled: sortWinnersToggle.checked,
         title: mainTitle.textContent
     };
     localStorage.setItem('lottery_session', JSON.stringify(sessionData));
@@ -311,12 +380,21 @@ function loadSession() {
         simpleDrawToggle.checked = data.simpleDrawMode;
         batchDrawToggle.checked = data.batchDrawEnabled || false;
         batchSettingsContainer.classList.toggle('hidden', !batchDrawToggle.checked);
+        
+        // Restore sort setting from session if available, else fallback to localStorage
+        if (data.sortWinnersEnabled !== undefined) {
+            sortWinnersToggle.checked = data.sortWinnersEnabled;
+        } else {
+            sortWinnersToggle.checked = localStorage.getItem('sortWinnersEnabled') === 'true';
+        }
+
         mainTitle.textContent = data.title;
         document.title = data.title;
         
         recoveryModal.classList.add('hidden');
         switchToLotteryView();
-        updateWinnersList();
+        // Force sort on session load if enabled to ensure consistent state
+        updateWinnersList(sortWinnersToggle.checked); 
         updateStatus('進度已恢復。');
     } catch (e) {
         console.error("恢復進度失敗:", e);
@@ -841,7 +919,7 @@ function handleDrawWinner() {
             playWinnerSound();
             launchConfetti();
             updateParticipantCount();
-            updateWinnersList();
+            updateWinnersList(true);
             updatePrizeDisplay();
             drawButton.disabled = false;
             saveSession();
@@ -947,16 +1025,27 @@ function handleRedraw(prizeIndex, winnerIndex) {
     winnerDisplay.textContent = '準備補抽！';
     winnerDisplay.style.fontSize = "4rem";
     exportCsvBtn.classList.add('hidden');
-    updateParticipantCount(); updateWinnersList(); updatePrizeDisplay(); saveSession();
+    updateParticipantCount(); updateWinnersList(true); updatePrizeDisplay(); saveSession();
 }
 
-function updateWinnersList() {
+function updateWinnersList(forceSort = false) {
     const isSimpleMode = simpleDrawToggle.checked;
     const hasAnyWinners = prizes.some(p => p.winners.length > 0);
     const allPrizesDrawn = prizes.every(p => p.winners.length >= p.quantity);
+    
+    // Toggle Sort Button Visibility
+    const isSortEnabled = sortWinnersToggle.checked;
+    if (isSortEnabled && !isSimpleMode && hasAnyWinners) {
+        sortWinnersBtn.classList.remove('hidden');
+    } else {
+        sortWinnersBtn.classList.add('hidden');
+    }
+
     if (hasAnyWinners) { winnersListContainer.classList.remove('hidden'); mainDrawPanel.classList.remove('md:w-full'); mainDrawPanel.classList.add('md:w-[70%]'); } 
     else { return; }
+    
     winnersList.innerHTML = '';
+    
     const createWinnerTag = (winner, prizeIndex, winnerIndex) => {
         const winnerTagContainer = document.createElement('div');
         winnerTagContainer.className = 'winner-tag px-2 py-1 rounded-md flex items-center justify-between';
@@ -978,6 +1067,7 @@ function updateWinnersList() {
         }
         return winnerTagContainer;
     };
+
     if (isSimpleMode) {
         document.getElementById('winners-list-title').textContent = '已抽出名單';
         const winnerNames = document.createElement('div');
@@ -992,7 +1082,42 @@ function updateWinnersList() {
                 prizeContainer.innerHTML = `<h4 class="font-bold text-lg" style="color: var(--accent-color);">${prize.name} (${prize.winners.length}/${prize.quantity})</h4>`;
                 const winnerNames = document.createElement('div');
                 winnerNames.className = 'grid grid-cols-2 gap-x-4 gap-y-2 mt-2 text-base';
-                prize.winners.forEach((winner, winnerIndex) => { winnerNames.appendChild(createWinnerTag(winner, prizeIndex, winnerIndex)); });
+                
+                let displayWinners = prize.winners.map((w, idx) => ({ ...w, originalIndex: idx }));
+                
+                // Sorting Logic: Only sort if enabled and (forced or triggered by auto-update context)
+                if (isSortEnabled && (forceSort === true)) {
+                     displayWinners.sort((a, b) => {
+                        if (a.claimed === b.claimed) {
+                            return a.originalIndex - b.originalIndex; // Keep original order if status same
+                        }
+                        return a.claimed ? 1 : -1; // Unclaimed (false) comes first
+                    });
+                }
+
+                displayWinners.forEach((winner) => { 
+                    // Pass original index for redraw logic to work correctly
+                    // Fix: Update the REAL data source using originalIndex, not the temporary display copy
+                    const winnerTag = createWinnerTag(winner, prizeIndex, winner.originalIndex);
+                    
+                    // Override the click listener on the name span specifically to update the correct data reference
+                    const nameSpan = winnerTag.querySelector('span');
+                    // Remove old listener by cloning node (cleanest way without named function)
+                    const newNameSpan = nameSpan.cloneNode(true);
+                    winnerTag.replaceChild(newNameSpan, nameSpan);
+                    
+                    newNameSpan.addEventListener('click', () => {
+                        // Access the ORIGINAL data source
+                        const actualWinner = prizes[prizeIndex].winners[winner.originalIndex];
+                        actualWinner.claimed = !actualWinner.claimed;
+                        
+                        winnerTag.classList.toggle('claimed', actualWinner.claimed);
+                        saveSession();
+                    });
+
+                    winnerNames.appendChild(winnerTag); 
+                });
+                
                 prizeContainer.appendChild(winnerNames);
                 winnersList.appendChild(prizeContainer);
             }
