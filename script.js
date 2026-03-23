@@ -816,6 +816,24 @@ function resolveNameCollisionsAndSetParticipants(objList) {
 
 function loadFromCustomInput() { 
     const rawStrings = customListInput.value.split(/[,，\n]+/ ).map(name => name.trim()).filter(name => name.length > 0);
+    
+    // 如果「過濾重複姓名」開關是關閉的，則允許名單內有重複人名（視作多個抽獎機會）
+    if (!filterDuplicatesToggle.checked) {
+        const excludeRaw = excludeListInput.value;
+        const excludeNames = new Set(excludeRaw.split(/[,，\n]+/ ).map(name => name.trim()).filter(name => name.length > 0));
+        
+        participants = rawStrings.filter(name => !excludeNames.has(name));
+        
+        if (participants.length > 0 && readAndValidatePrizes()) {
+            updateStatus(`成功載入 ${participants.length} 個抽獎名標！`, false);
+            switchToLotteryView();
+        } else {
+            if (participants.length === 0) updateStatus(`載入的名單中沒有有效的名字。`, true);
+            loadButton.disabled = false;
+        }
+        return;
+    }
+
     const rawList = rawStrings.map(name => ({ name, uniqueKey: name, smartValues: [] }));
     finalizeDataLoading(rawList);
 }
@@ -1014,18 +1032,33 @@ function updatePrizeDisplay() {
 
 function updateParticipantCount() { participantCountSpan.textContent = participants.length; }
 
-function handleRedraw(prizeIndex, winnerIndex) {
+function handleDonate(prizeIndex, winnerIndex) {
     const prize = prizes[prizeIndex];
     if (!prize) return;
-    const winnerToRedraw = prize.winners.splice(winnerIndex, 1)[0];
-    if (!winnerToRedraw) return;
-    participants.push(winnerToRedraw.name);
+    const winnerToDonate = prize.winners.splice(winnerIndex, 1)[0];
+    if (!winnerToDonate) return;
+    
+    // 將捐出的人放回抽獎池
+    participants.push(winnerToDonate.name);
     currentPrizeIndex = prizeIndex;
+    
+    // 重置抽獎狀態，引導重新抽取
     drawButton.disabled = false;
     winnerDisplay.textContent = '準備補抽！';
     winnerDisplay.style.fontSize = "4rem";
+    
+    // 清除匯出按鈕（因為名單已變動）
     exportCsvBtn.classList.add('hidden');
-    updateParticipantCount(); updateWinnersList(true); updatePrizeDisplay(); saveSession();
+    
+    updateParticipantCount(); 
+    updateWinnersList(true); 
+    updatePrizeDisplay(); 
+    saveSession();
+    updateStatus(`已將「${winnerToDonate.name}」捐出的獎項放回抽獎池。`);
+}
+
+function handleRedraw(prizeIndex, winnerIndex) {
+    handleDonate(prizeIndex, winnerIndex);
 }
 
 function updateWinnersList(forceSort = false) {
@@ -1059,12 +1092,20 @@ function updateWinnersList(forceSort = false) {
         });
         if (winner.claimed) { winnerTagContainer.classList.add('claimed'); }
         winnerTagContainer.appendChild(winnerNameSpan);
-        if (allPrizesDrawn && !isSimpleMode) {
-            const redrawBtn = document.createElement('button');
-            redrawBtn.className = 'redraw-btn'; redrawBtn.innerHTML = '⟲'; redrawBtn.title = '棄權補抽';
-            redrawBtn.addEventListener('click', (e) => { e.stopPropagation(); handleRedraw(prizeIndex, winnerIndex); });
-            winnerTagContainer.appendChild(redrawBtn);
-        }
+
+        // 新增：捐出按鈕（🎁），不論是否領取都可捐出
+        const donateBtn = document.createElement('button');
+        donateBtn.className = 'donate-btn';
+        donateBtn.innerHTML = '🎁';
+        donateBtn.title = '捐出獎項（重新抽獎）';
+        donateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`確定要將「${winner.name}」的獎項捐出並重新抽獎嗎？`)) {
+                handleDonate(prizeIndex, winnerIndex);
+            }
+        });
+        winnerTagContainer.appendChild(donateBtn);
+
         return winnerTagContainer;
     };
 
