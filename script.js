@@ -342,7 +342,7 @@ function loadVisuals() {
         logoImg.src = customLogo;
         logoImg.style.visibility = 'visible';
     } else {
-        logoImg.src = "../Aliang.png";
+        logoImg.src = "Logo.png";
     }
 
     const customBg = localStorage.getItem('customBg');
