@@ -7,7 +7,15 @@ const navHomeBtn = document.getElementById('nav-home-btn');
 const navWinnersBtn = document.getElementById('nav-winners-btn');
 const navBonusBtn = document.getElementById('nav-bonus-btn');
 const navSettingsBtn = document.getElementById('nav-settings-btn');
-const navListBtn = document.getElementById('nav-list-btn');
+const settingsBody = document.getElementById('settings-body');
+const settingsCategoryButtons = {
+    env: document.getElementById('settings-category-env'),
+    list: document.getElementById('settings-category-list'),
+    prize: document.getElementById('settings-category-prize')
+};
+const winnersModal = document.getElementById('winners-modal');
+const winnersModalList = document.getElementById('winners-modal-list');
+const downloadWinnersBtn = document.getElementById('download-winners-btn');
 const enterStageBtn = document.getElementById('enter-stage-btn');
 const replaceHeroBtn = document.getElementById('replace-hero-btn');
 const homeStatusText = document.getElementById('home-status-text');
@@ -149,19 +157,26 @@ let currentPrizeIndex = 0;
 let rollingInterval = null;
 let activeDataSource = 'custom';
 let isSoundOn = true;
+let lastFocusedElement = null;
 const themes = [ { id: 'candy', name: '糖果王國', colors: ['#ff69b4', '#87ceeb'] }, { id: 'forest', name: '森林夥伴', colors: ['#228b22', '#ff7f50'] }, { id: 'izakaya', name: '居酒屋', colors: ['#e53e3e', '#ffab00'] }, { id: 'sakura', name: '櫻花', colors: ['#db2777', '#fdf2f8'] }, { id: 'midnight', name: '午夜', colors: ['#38bdf8', '#0f172a'] } ];
 
 function init() {
     const savedEventTitle = localStorage.getItem('lotteryEventTitle');
     setEventTitle(savedEventTitle || '祝您中大獎');
     navHomeBtn.addEventListener('click', showHome);
-    navSettingsBtn.addEventListener('click', () => showSettings('mode'));
-    navListBtn.addEventListener('click', () => showSettings('list'));
-    navWinnersBtn.addEventListener('click', () => {
-        if (!hasActiveStage()) { showSettings('list'); return; }
-        switchToLotteryView();
-        document.getElementById('winners-list-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    navSettingsBtn.addEventListener('click', () => showSettings('env'));
+    navWinnersBtn.addEventListener('click', openWinnersModal);
+    Object.entries(settingsCategoryButtons).forEach(([category, button]) => button.addEventListener('click', () => selectSettingsCategory(category)));
+    document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
+    document.getElementById('settings-done-btn').addEventListener('click', closeSettings);
+    document.getElementById('close-winners-btn').addEventListener('click', closeWinnersModal);
+    downloadWinnersBtn.addEventListener('click', () => {
+        const latest = getLatestResults();
+        if (latest) downloadResultsCsv(latest.prizes, latest.simpleDrawMode);
     });
+    [settingsSection, winnersModal].forEach(modal => modal.addEventListener('click', event => {
+        if (event.target === modal) (modal === settingsSection ? closeSettings : closeWinnersModal)();
+    }));
     navBonusBtn.addEventListener('click', () => {
         if (!hasActiveStage()) { showSettings('list'); return; }
         switchToLotteryView();
@@ -201,7 +216,7 @@ function init() {
     
     // Environment Tabs
     tabModeBtn.addEventListener('click', () => switchEnvTab('mode'));
-    tabPrizeBtn.addEventListener('click', () => switchEnvTab('prize'));
+    tabPrizeBtn.addEventListener('click', () => showSettings('prize'));
     tabThemeBtn.addEventListener('click', () => switchEnvTab('theme'));
     tabVisualBtn.addEventListener('click', () => switchEnvTab('visual'));
     tabSoundBtn.addEventListener('click', () => switchEnvTab('sound'));
@@ -248,13 +263,26 @@ function init() {
 
     // Other settings
     soundToggleBtn.addEventListener('click', toggleSound);
-    fullscreenBtn.addEventListener('click', () => {
-        if (document.fullscreenElement) document.exitFullscreen();
-        else document.documentElement.requestFullscreen();
-    });
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', updateFullscreenButton);
     document.addEventListener('keydown', (event) => {
         const target = event.target;
-        if (event.key === 'Escape') toggleTitlePopover(false);
+        const openDialog = !winnersModal.classList.contains('hidden') ? winnersModal
+            : !settingsSection.classList.contains('hidden') ? settingsSection : null;
+        if (event.key === 'Escape') {
+            toggleTitlePopover(false);
+            if (!winnersModal.classList.contains('hidden')) closeWinnersModal();
+            else if (!settingsSection.classList.contains('hidden')) closeSettings();
+        }
+        if (event.key === 'Tab' && openDialog) {
+            const controls = Array.from(openDialog.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])'))
+                .filter(element => element.getClientRects().length);
+            const first = controls[0], last = controls[controls.length - 1];
+            if (first && (event.shiftKey && document.activeElement === first || !event.shiftKey && document.activeElement === last || !openDialog.contains(document.activeElement))) {
+                event.preventDefault();
+                (event.shiftKey ? last : first).focus();
+            }
+        }
         if (event.code !== 'Space' || !target || target.closest('button, input, textarea, select, [contenteditable="true"]')) return;
         if (!homeSection.classList.contains('hidden') && event.target === document.body) {
             event.preventDefault(); enterStage(); return;
@@ -331,7 +359,10 @@ function init() {
     // Restore mode settings
     const savedSimpleMode = localStorage.getItem('simpleDrawMode') === 'true';
     simpleDrawToggle.checked = savedSimpleMode;
-    if (savedSimpleMode) tabPrizeBtn.classList.add('hidden');
+    if (savedSimpleMode) {
+        tabPrizeBtn.classList.add('hidden');
+        settingsCategoryButtons.prize.classList.add('hidden');
+    }
 
     const savedBatchEnabled = localStorage.getItem('batchDrawEnabled') === 'true';
     batchDrawToggle.checked = savedBatchEnabled;
@@ -370,7 +401,7 @@ function toggleTitlePopover(open = eventTitlePopover.classList.contains('hidden'
 }
 
 function setActiveNav(button) {
-    [navHomeBtn, navSettingsBtn, navListBtn, navWinnersBtn].forEach(nav => nav.classList.toggle('active', nav === button));
+    [navHomeBtn, navSettingsBtn].forEach(nav => nav.classList.toggle('active', nav === button));
 }
 
 function hasActiveStage() {
@@ -379,7 +410,8 @@ function hasActiveStage() {
 
 function showHome() {
     homeSection.classList.remove('hidden');
-    settingsSection.classList.add('hidden');
+    closeSettings();
+    closeWinnersModal();
     lotterySection.classList.add('hidden');
     resetBtn.classList.add('hidden');
     setActiveNav(navHomeBtn);
@@ -388,19 +420,36 @@ function showHome() {
 }
 
 function showSettings(area) {
-    homeSection.classList.add('hidden');
+    const category = area === 'list' ? 'list' : area === 'prize' && !simpleDrawToggle.checked ? 'prize' : 'env';
+    lastFocusedElement = document.activeElement;
     settingsSection.classList.remove('hidden');
-    lotterySection.classList.add('hidden');
-    resetBtn.classList.toggle('hidden', !hasActiveStage());
-    if (area === 'list') {
-        setActiveNav(navListBtn);
-        switchTab('custom');
-        document.getElementById('tab-content-custom').scrollIntoView({ block: 'center' });
-    } else {
-        setActiveNav(navSettingsBtn);
-        switchEnvTab(area);
-        window.scrollTo(0, 0);
-    }
+    selectSettingsCategory(category);
+    document.body.classList.add('modal-open');
+    document.getElementById('close-settings-btn').focus();
+}
+
+function selectSettingsCategory(category) {
+    settingsBody.dataset.category = category;
+    Object.entries(settingsCategoryButtons).forEach(([key, button]) => button.classList.toggle('active', key === category));
+    document.getElementById('env-settings-heading').textContent = category === 'prize' ? '獎項輪次配置' : '環境設定';
+    if (category === 'list') switchTab(activeDataSource);
+    else if (category === 'prize') switchEnvTab('prize');
+    else if (tabPrizeBtn.classList.contains('active')) switchEnvTab('mode');
+    settingsSection.querySelector('.settings-dialog').scrollTop = 0;
+}
+
+function closeSettings() {
+    if (settingsSection.classList.contains('hidden')) return;
+    settingsSection.classList.add('hidden');
+    if (winnersModal.classList.contains('hidden')) document.body.classList.remove('modal-open');
+    if (lastFocusedElement instanceof HTMLElement) lastFocusedElement.focus();
+}
+
+function closeWinnersModal() {
+    if (winnersModal.classList.contains('hidden')) return;
+    winnersModal.classList.add('hidden');
+    if (settingsSection.classList.contains('hidden')) document.body.classList.remove('modal-open');
+    if (lastFocusedElement instanceof HTMLElement) lastFocusedElement.focus();
 }
 
 function enterStage() {
@@ -495,6 +544,79 @@ function saveSession() {
         title: eventTitleText.textContent
     };
     localStorage.setItem('lottery_session', JSON.stringify(sessionData));
+    if (prizes.some(prize => prize.winners?.length)) {
+        localStorage.setItem('lottery_last_results', JSON.stringify({
+            prizes, simpleDrawMode: simpleDrawToggle.checked,
+            title: eventTitleText.textContent, savedAt: new Date().toISOString()
+        }));
+    }
+}
+
+function getLatestResults() {
+    if (prizes.some(prize => prize.winners?.length)) {
+        return { prizes, simpleDrawMode: simpleDrawToggle.checked, title: eventTitleText.textContent };
+    }
+    try {
+        const saved = JSON.parse(localStorage.getItem('lottery_last_results') || 'null');
+        return saved?.prizes?.some(prize => prize.winners?.length) ? saved : null;
+    } catch {
+        return null;
+    }
+}
+
+function openWinnersModal() {
+    lastFocusedElement = document.activeElement;
+    const latest = getLatestResults();
+    winnersModalList.replaceChildren();
+    downloadWinnersBtn.disabled = !latest;
+    document.getElementById('winners-record-meta').textContent = latest
+        ? `${latest.title || '最近一次活動'}・共 ${latest.prizes.reduce((count, prize) => count + prize.winners.length, 0)} 位得獎者`
+        : '尚無中獎記錄，完成一次摸彩後即可查看。';
+    if (latest) {
+        latest.prizes.filter(prize => prize.winners.length).forEach(prize => {
+            const group = document.createElement('section');
+            group.className = 'winners-modal-group';
+            const heading = document.createElement('h3');
+            heading.textContent = `${prize.name}（${prize.winners.length} 位）`;
+            group.appendChild(heading);
+            prize.winners.forEach(winner => {
+                const row = document.createElement('div');
+                row.className = 'winners-modal-row';
+                const name = document.createElement('strong');
+                name.textContent = winner.name;
+                const claim = document.createElement('span');
+                claim.textContent = winner.claimed ? '已領取' : '未領取';
+                row.append(name, claim);
+                group.appendChild(row);
+            });
+            winnersModalList.appendChild(group);
+        });
+    } else {
+        const empty = document.createElement('p');
+        empty.className = 'winners-modal-empty';
+        empty.textContent = '目前沒有可顯示的中獎記錄。';
+        winnersModalList.appendChild(empty);
+    }
+    winnersModal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    document.getElementById('close-winners-btn').focus();
+}
+
+async function toggleFullscreen() {
+    try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+    } catch (error) {
+        console.error('無法切換全螢幕：', error);
+        alert('瀏覽器未允許全螢幕，請確認瀏覽器設定後再試。');
+    }
+}
+
+function updateFullscreenButton() {
+    const enabled = Boolean(document.fullscreenElement);
+    document.getElementById('fullscreen-label').textContent = enabled ? '離開全螢幕' : '全螢幕';
+    fullscreenBtn.setAttribute('aria-label', enabled ? '離開全螢幕' : '進入全螢幕');
+    fullscreenBtn.setAttribute('aria-pressed', String(enabled));
 }
 
 function loadSession() {
@@ -640,7 +762,7 @@ function switchTab(tabName) {
     tabs[tabName].content.classList.remove('hidden');
 }
 function switchEnvTab(tabName) { const tabs = { mode: { btn: tabModeBtn, content: tabContentMode }, prize: { btn: tabPrizeBtn, content: tabContentPrize }, theme: { btn: tabThemeBtn, content: tabContentTheme }, visual: { btn: tabVisualBtn, content: tabContentVisual }, sound: { btn: tabSoundBtn, content: tabContentSound }, effect: { btn: tabEffectBtn, content: tabContentEffect } }; Object.values(tabs).forEach(tab => { tab.btn.classList.remove('active'); tab.content.classList.add('hidden'); }); tabs[tabName].btn.classList.add('active'); tabs[tabName].content.classList.remove('hidden'); }
-function handleSimpleDrawToggle(e) { const isEnabled = e.target.checked; if (isEnabled) { tabPrizeBtn.classList.add('hidden'); if (tabPrizeBtn.classList.contains('active')) { switchEnvTab('mode'); } } else { tabPrizeBtn.classList.remove('hidden'); } localStorage.setItem('simpleDrawMode', isEnabled); } 
+function handleSimpleDrawToggle(e) { const isEnabled = e.target.checked; tabPrizeBtn.classList.toggle('hidden', isEnabled); settingsCategoryButtons.prize.classList.toggle('hidden', isEnabled); if (isEnabled && settingsBody.dataset.category === 'prize') selectSettingsCategory('env'); localStorage.setItem('simpleDrawMode', isEnabled); }
 function addPrizeRow(name = '', quantity = 1) { const row = document.createElement('div'); row.className = 'prize-row flex items-center gap-2'; row.innerHTML = ` <input type="text" class="prize-name form-input w-full p-2 rounded" value="${name}" placeholder="獎項名稱"> <input type="number" class="prize-quantity form-input w-24 p-2 rounded" value="${quantity}" min="1" placeholder="數量"> <button class="remove-prize-btn btn-secondary px-3 py-2 rounded" style="color: var(--danger-color);">✕</button> `; prizesContainer.appendChild(row); row.querySelector('.remove-prize-btn').addEventListener('click', () => { row.remove(); updateHomeSummary(); }); updateHomeSummary(); }
 const clearPrizes = () => { prizesContainer.innerHTML = ''; updateHomeSummary(); };
 function handleUrlParams() { const params = new URLSearchParams(window.location.search); if (params.has('sheetUrl') && params.has('sheetName') && params.has('column')) { sheetUrlInput.value = params.get('sheetUrl'); sheetNameInput.value = params.get('sheetName'); columnLetterInput.value = params.get('column'); handleLoadData(); } }
@@ -1117,7 +1239,8 @@ function updateStatus(message, isError = false) { statusMessage.textContent = me
 
 function switchToLotteryView() {
     homeSection.classList.add('hidden');
-    settingsSection.classList.add('hidden');
+    closeSettings();
+    closeWinnersModal();
     lotterySection.classList.remove('hidden');
     resetBtn.classList.remove('hidden');
     setActiveNav(null);
@@ -1341,10 +1464,13 @@ function updateWinnersList(forceSort = false) {
 }
 
 function exportResultsToCsv() {
-    const isSimpleMode = simpleDrawToggle.checked;
+    downloadResultsCsv(prizes, simpleDrawToggle.checked);
+}
+
+function downloadResultsCsv(resultPrizes, isSimpleMode) {
     let csvContent = isSimpleMode ? '\uFEFF"抽出順序","姓名","是否領取"\n' : '\uFEFF"獎項","得獎人","領取獎項"\n';
     
-    prizes.forEach(prize => {
+    resultPrizes.forEach(prize => {
         prize.winners.forEach((winner, index) => {
             const winnerEscaped = `"${winner.name.replace(/"/g, '""')}"`;
             const claimedText = winner.claimed ? "是" : "否";
@@ -1368,10 +1494,11 @@ function exportResultsToCsv() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function resetApp() {
-    settingsSection.classList.add('hidden'); lotterySection.classList.add('hidden'); resetBtn.classList.add('hidden');
+    closeSettings(); closeWinnersModal(); lotterySection.classList.add('hidden'); resetBtn.classList.add('hidden');
     window.scrollTo(0, 0);
     participants = []; prizes = []; currentPrizeIndex = 0;
     winnerDisplay.textContent = '準備開始！'; winnerDisplay.classList.remove('winner-reveal');

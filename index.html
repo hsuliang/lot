@@ -50,11 +50,10 @@
             <nav class="main-nav" aria-label="主選單">
                 <button id="nav-home-btn" class="nav-button active" type="button"><span aria-hidden="true">▦</span>活動大廳</button>
                 <button id="sound-toggle-btn" class="nav-button" type="button" aria-label="切換音效"><span id="sound-icon" aria-hidden="true">🔊</span><span>音效開啟</span></button>
-                <button id="fullscreen-btn" class="nav-button" type="button"><span aria-hidden="true">⛶</span>全螢幕</button>
+                <button id="fullscreen-btn" class="nav-button" type="button" aria-label="進入全螢幕"><span aria-hidden="true">⛶</span><span id="fullscreen-label">全螢幕</span></button>
                 <button id="nav-winners-btn" class="nav-button" type="button"><span aria-hidden="true">🏅</span>中獎記錄</button>
                 <button id="nav-bonus-btn" class="nav-button" type="button"><span aria-hidden="true">🎁</span>老闆加碼</button>
-                <button id="nav-settings-btn" class="nav-button" type="button"><span aria-hidden="true">☷</span>環境設定</button>
-                <button id="nav-list-btn" class="nav-button nav-button-accent" type="button"><span aria-hidden="true">♧</span>名單設定</button>
+                <button id="nav-settings-btn" class="nav-button nav-button-accent" type="button"><span aria-hidden="true">☷</span>系統設定</button>
                 <button id="reset-btn" class="header-reset-button hidden" title="結束活動並返回設定">↺ <span>重新設定</span></button>
             </nav>
         </header>
@@ -84,15 +83,26 @@
         </div>
     </section>
 
-    <section id="settings-section" class="setup-layout hidden">
+    <section id="settings-section" class="settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
+      <div class="settings-dialog">
+        <div class="settings-dialog-header">
+            <div><h2 id="settings-dialog-title">系統設定</h2><p>管理環境與投影、參與名單及獎項輪次</p></div>
+            <button id="close-settings-btn" class="dialog-close" type="button" aria-label="關閉系統設定">✕</button>
+        </div>
+        <nav class="settings-category-nav" aria-label="系統設定分類">
+            <button id="settings-category-env" class="active" type="button">⚙ 環境與投影</button>
+            <button id="settings-category-list" type="button">♧ 名單匯入與過濾</button>
+            <button id="settings-category-prize" type="button">🏅 獎項輪次配置</button>
+        </nav>
+        <div id="settings-body" class="setup-layout settings-body" data-category="env">
         <div class="setup-intro">
             <span class="section-kicker">活動準備</span>
             <h2>打造今晚的幸運舞台</h2>
             <p>設定活動、獎項與參與名單，載入後即可開始摸彩。</p>
         </div>
 
-        <div class="card p-8 rounded-lg">
-            <h2 class="text-2xl font-bold mb-4" style="color: var(--accent-color);">環境設定</h2>
+        <div id="env-settings-card" class="card p-8 rounded-lg">
+            <h2 id="env-settings-heading" class="text-2xl font-bold mb-4" style="color: var(--accent-color);">環境設定</h2>
             <div class="border-b" style="border-color: var(--input-border-color);">
                 <nav class="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
                     <button id="tab-mode"
@@ -232,7 +242,7 @@
             </div>
         </div>
 
-        <div class="card p-8 rounded-lg">
+        <div id="roster-settings-card" class="card p-8 rounded-lg">
             <h2 class="text-2xl font-bold mb-4" style="color: var(--accent-color);">名單設定</h2>
             <div class="border-b" style="border-color: var(--input-border-color);">
                 <nav class="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
@@ -377,6 +387,9 @@
         </div>
 
         <p id="status-message" class="text-center mt-4 h-6" role="status" aria-live="polite" style="color: var(--accent-color);"></p>
+        </div>
+        <div class="settings-dialog-footer"><button id="settings-done-btn" class="btn-primary" type="button">完成設定</button></div>
+      </div>
     </section>
 
     <section id="lottery-section" class="lottery-layout hidden">
@@ -447,6 +460,17 @@
         <div><span>v3.0 丙午．春分</span> | <span>由 Google Gemini 強力驅動</span> | <a href="https://bit.ly/Alaing" target="_blank" rel="noopener noreferrer">ㄚ亮笑長練功坊</a></div>
         <div class="footer-links"><button type="button" disabled title="即將推出">使用手冊</button><button type="button" disabled title="即將推出">快捷鍵指南</button><button type="button" disabled title="即將推出">技術支援</button></div>
     </footer>
+
+    <section id="winners-modal" class="settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="winners-dialog-title">
+        <div class="winners-dialog">
+            <div class="settings-dialog-header">
+                <div><h2 id="winners-dialog-title">最近一次中獎記錄</h2><p id="winners-record-meta">尚無中獎記錄</p></div>
+                <button id="close-winners-btn" class="dialog-close" type="button" aria-label="關閉中獎記錄">✕</button>
+            </div>
+            <div id="winners-modal-list" class="winners-modal-list"></div>
+            <div class="settings-dialog-footer"><button id="download-winners-btn" class="btn-primary" type="button" disabled>下載 CSV</button></div>
+        </div>
+    </section>
 
     <div id="duplicates-modal"
         class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black/70 backdrop-blur-sm p-4">
