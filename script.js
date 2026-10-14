@@ -187,7 +187,6 @@ function init() {
     document.getElementById('summary-prizes-btn').addEventListener('click', () => showSettings('prize'));
     document.getElementById('summary-roster-btn').addEventListener('click', () => showSettings('list'));
     document.getElementById('summary-rounds-btn').addEventListener('click', () => showSettings('prize'));
-    document.getElementById('summary-bonus-btn').addEventListener('click', () => navBonusBtn.click());
     eventTitlePill.addEventListener('click', () => toggleTitlePopover());
     document.getElementById('close-title-popover').addEventListener('click', () => toggleTitlePopover(false));
     document.addEventListener('click', (event) => {
@@ -431,7 +430,6 @@ function showSettings(area) {
 function selectSettingsCategory(category) {
     settingsBody.dataset.category = category;
     Object.entries(settingsCategoryButtons).forEach(([key, button]) => button.classList.toggle('active', key === category));
-    document.getElementById('env-settings-heading').textContent = category === 'prize' ? '獎項輪次配置' : '環境設定';
     if (category === 'list') switchTab(activeDataSource);
     else if (category === 'prize') switchEnvTab('prize');
     else if (tabPrizeBtn.classList.contains('active')) switchEnvTab('mode');
@@ -529,7 +527,7 @@ function loadVisuals() {
     }
 
     const customBg = localStorage.getItem('customBg');
-    heroVisual.style.backgroundImage = customBg ? `url(${customBg})` : "url('hero-izakaya.png')";
+    heroVisual.style.backgroundImage = customBg ? `url(${customBg})` : "url('hero-izakaya.jpg')";
 }
 
 // --- SESSION RECOVERY FUNCTIONS ---

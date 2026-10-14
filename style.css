@@ -141,7 +141,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .status-chip { padding: 4px 9px; border: 1px solid #ffe082; border-radius: 8px; background: #fff2c9; color: #8a6100; font-size: 12px; font-weight: 800; }
 .replace-hero-button { min-height: 40px; padding: 6px 14px; border: 1px solid var(--border-color); border-radius: 10px; background: #fff; color: #bd3175; font-size: 13px; font-weight: 800; }
 .replace-hero-button:hover { background: #fff0f6; }
-.hero-visual { position: relative; display: grid; place-items: center; min-height: min(625px, 65vh); background-image: url('hero-izakaya.png'); background-position: center; background-size: cover; color: #241a25; text-align: center; }
+.hero-visual { position: relative; display: grid; place-items: center; min-height: min(625px, 65vh); background-image: url('hero-izakaya.jpg'); background-position: center top; background-size: cover; color: #241a25; text-align: center; }
 .hero-visual::before { position: absolute; inset: 0; content: ''; background: linear-gradient(180deg, rgba(255, 244, 248, .72), rgba(255, 248, 251, .66) 62%, rgba(255, 255, 255, .94)); }
 .hero-visual-content { position: relative; z-index: 1; width: min(100%, 1050px); padding: 38px 25px 32px; }
 .hero-kicker { display: inline-block; max-width: 100%; padding: 12px 24px; border: 1px solid #f6b7c5; border-radius: 999px; background: rgba(255, 225, 231, .8); color: #bd346c; font-size: 15px; font-weight: 800; }
@@ -150,7 +150,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .enter-stage-button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 72px; margin: 38px 0 20px; padding: 10px 40px; border-radius: 999px; font-size: 22px; font-weight: 900; }
 .enter-stage-button span { padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.18); font-size: 12px; letter-spacing: .08em; }
 .hero-helper { margin: 0; color: #685b65; font-size: 14px; }
-.home-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; max-width: 1500px; margin: 22px auto 0; }
+.home-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; max-width: 1500px; margin: 22px auto 0; }
 .summary-card { display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 82px; padding: 10px 12px; border: 1px solid #eadfe4; border-radius: 15px; background: #fff; color: #6d5b64; text-align: left; font-size: 13px; font-weight: 700; box-shadow: 0 5px 12px rgba(103, 39, 72, .04); }
 button.summary-card:hover { border-color: #d44d8c; transform: translateY(-1px); }
 .summary-card > span:last-child { min-width: 0; }
@@ -316,7 +316,7 @@ input:checked + .toggle-switch-bg { background-color: var(--primary-color); }
 @media (max-width: 1100px) {
     .app-header { flex-wrap: wrap; }
     .main-nav { width: 100%; justify-content: flex-start; }
-    .home-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .home-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .lottery-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
     .live-status-bar, .metrics-row, .stage-panel, .winners-panel { grid-column: 1; grid-row: auto; }
     .winners-panel { min-height: 300px; }
@@ -357,7 +357,7 @@ input:checked + .toggle-switch-bg { background-color: var(--primary-color); }
     .home-section { padding: 13px 8px 24px; }
     .home-hero-toolbar { align-items: flex-start; flex-direction: column; padding: 13px; }
     .home-status { font-size: 13px; }
-    .hero-visual { min-height: 550px; background-position: 45% center; }
+    .hero-visual { min-height: 550px; background-position: 45% top; }
     .hero-visual::before { background: linear-gradient(180deg, rgba(255,244,248,.82), rgba(255,248,251,.76) 60%, rgba(255,255,255,.94)); }
     .hero-visual-content { padding: 27px 15px; }
     .hero-kicker { padding: 9px 12px; font-size: 11px; }
