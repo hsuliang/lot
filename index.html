@@ -16,28 +16,75 @@
 
 <body class="app-body">
 
-    <div id="app-bg-overlay"
-        class="fixed inset-0 pointer-events-none bg-cover bg-center bg-no-repeat transition-opacity duration-500 opacity-0">
-    </div>
-
     <div class="app-shell relative z-10">
         <header class="app-header">
             <div class="brand-lockup">
-                <img id="logo-img" src="Logo.png" alt="ㄚ亮笑長標誌" class="brand-logo" onerror="this.style.visibility='hidden';">
+                <span class="brand-logo-wrap"><img id="logo-img" src="Logo.png" alt="ㄚ亮笑長標誌" class="brand-logo" onerror="this.style.visibility='hidden';"></span>
                 <div class="brand-copy">
-                    <span class="brand-eyebrow">LIVE EVENT STUDIO</span>
                     <h1 id="main-title" class="izakaya-title">ㄚ亮笑長的摸彩助手</h1>
                 </div>
+                <div class="event-title-control">
+                    <button id="event-title-pill" class="event-badge" type="button" aria-expanded="false" aria-controls="event-title-popover" title="編輯活動標題">✦ <span id="event-title-text">祝您中大獎</span></button>
+                    <div id="event-title-popover" class="event-title-popover hidden">
+                        <div class="popover-heading"><strong>標題設定</strong><button id="close-title-popover" type="button" aria-label="關閉標題設定">✕</button></div>
+                        <div id="tab-content-title" class="space-y-4">
+                            <div>
+                                <label for="title-input" class="block mb-1 font-semibold">藥丸內文字</label>
+                                <input type="text" id="title-input" class="form-input w-full p-2 rounded" value="祝您中大獎" maxlength="30" placeholder="請輸入活動標題">
+                            </div>
+                            <div>
+                                <label for="title-template-name-input" class="block mb-1 font-semibold">儲存目前標題為範本</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="title-template-name-input" class="form-input w-full p-2 rounded" placeholder="範本名稱">
+                                    <button id="save-title-template-btn" class="btn-primary px-4 py-2 rounded-lg text-sm flex-shrink-0">儲存</button>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="block mb-1 font-semibold">載入標題範本</span>
+                                <div id="title-template-buttons-container" class="flex flex-wrap gap-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="header-actions">
-                <span class="event-badge">✨ 尾牙春酒專用</span>
-                <button id="sound-toggle-btn" class="header-icon-button" aria-label="切換音效" title="切換音效">🔊</button>
-                <button id="fullscreen-btn" class="header-icon-button" aria-label="切換全螢幕" title="切換全螢幕">⛶</button>
+            <nav class="main-nav" aria-label="主選單">
+                <button id="nav-home-btn" class="nav-button active" type="button"><span aria-hidden="true">▦</span>活動大廳</button>
+                <button id="sound-toggle-btn" class="nav-button" type="button" aria-label="切換音效"><span id="sound-icon" aria-hidden="true">🔊</span><span>音效開啟</span></button>
+                <button id="fullscreen-btn" class="nav-button" type="button"><span aria-hidden="true">⛶</span>全螢幕</button>
+                <button id="nav-winners-btn" class="nav-button" type="button"><span aria-hidden="true">🏅</span>中獎記錄</button>
+                <button id="nav-bonus-btn" class="nav-button" type="button"><span aria-hidden="true">🎁</span>老闆加碼</button>
+                <button id="nav-settings-btn" class="nav-button" type="button"><span aria-hidden="true">☷</span>環境設定</button>
+                <button id="nav-list-btn" class="nav-button nav-button-accent" type="button"><span aria-hidden="true">♧</span>名單設定</button>
                 <button id="reset-btn" class="header-reset-button hidden" title="結束活動並返回設定">↺ <span>重新設定</span></button>
-            </div>
+            </nav>
         </header>
 
-    <section id="settings-section" class="setup-layout">
+    <section id="home-section" class="home-section">
+        <div class="home-hero">
+            <div class="home-hero-toolbar">
+                <div class="home-status"><span id="home-status-icon" class="status-icon">✦</span><strong>活動企劃主視覺展示區</strong><span id="home-status-text" class="status-chip">請先載入摸彩名單</span></div>
+                <button id="replace-hero-btn" class="replace-hero-button" type="button">▧ 更換活動主視覺企劃圖</button>
+            </div>
+            <div id="hero-visual" class="hero-visual">
+                <div class="hero-visual-content">
+                    <span class="hero-kicker">🏮 年度盛典・幸運摸彩即將開獎 ✨</span>
+                    <h2>今晚，好運由你揭曉</h2>
+                    <p>點亮幸運瞬間，歡樂好禮即刻降臨。準備好把大獎帶回家！</p>
+                    <button id="enter-stage-btn" class="btn-primary enter-stage-button" type="button">🚀 進入摸彩現場 <span>SPACE</span></button>
+                    <p class="hero-helper">♧ 主控台提示：可按空白鍵快速進入；支援外接投影延伸螢幕。</p>
+                </div>
+            </div>
+        </div>
+        <div class="home-summary" aria-label="活動準備狀態">
+            <button id="summary-prizes-btn" class="summary-card" type="button"><span class="summary-icon gold">♔</span><span>獎項配置庫存<strong>已準備：<em id="summary-prize-count">0</em> 項</strong></span></button>
+            <button id="summary-roster-btn" class="summary-card" type="button"><span class="summary-icon pink">♧</span><span>摸彩名冊同步<strong>資格名額：<em id="summary-roster-count">0</em> 位</strong></span></button>
+            <div class="summary-card"><span class="summary-icon purple">✦</span><span>現場視聽就緒度<strong id="summary-ready-text">準備設定</strong></span></div>
+            <button id="summary-rounds-btn" class="summary-card" type="button"><span class="summary-icon gold">☷</span><span>檢視摸彩輪次<strong><em id="summary-round-count">0</em> 個階段序盤</strong></span></button>
+            <button id="summary-bonus-btn" class="summary-card" type="button"><span class="summary-icon yellow">◇</span><span>加碼抽紅包庫<strong>一鍵即時加碼</strong></span></button>
+        </div>
+    </section>
+
+    <section id="settings-section" class="setup-layout hidden">
         <div class="setup-intro">
             <span class="section-kicker">活動準備</span>
             <h2>打造今晚的幸運舞台</h2>
@@ -50,8 +97,6 @@
                 <nav class="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
                     <button id="tab-mode"
                         class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg">模式設定</button>
-                    <button id="tab-title"
-                        class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg">標題設定</button>
                     <button id="tab-prize"
                         class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg">獎項設定</button>
                     <button id="tab-theme"
@@ -119,28 +164,6 @@
                 </div>
             </div>
 
-            <div id="tab-content-title" class="hidden mt-6 space-y-4">
-                <div class="mb-4">
-                    <label class="block mb-2 font-semibold" style="color: var(--accent-color);">儲存目前標題為範本</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="title-template-name-input" class="form-input w-full p-2 rounded"
-                            placeholder="請輸入範本名稱">
-                        <button id="save-title-template-btn"
-                            class="btn-primary px-4 py-2 rounded-lg text-sm flex-shrink-0">儲存</button>
-                    </div>
-                </div>
-                <div class="mb-4">
-                    <label class="block mb-2 font-semibold" style="color: var(--accent-color);">載入標題範本</label>
-                    <div id="title-template-buttons-container" class="flex flex-wrap gap-2"></div>
-                </div>
-                <hr style="border-color: var(--input-border-color);" class="my-4">
-                <div>
-                    <label for="title-input" class="block mb-1 font-semibold"
-                        style="color: var(--accent-color);">摸彩活動標題</label>
-                    <input type="text" id="title-input" class="form-input w-full p-2 rounded" placeholder="請輸入新的標題">
-                </div>
-            </div>
-
             <div id="tab-content-prize" class="hidden mt-6">
                 <div class="mb-4">
                     <label class="block mb-2 font-semibold" style="color: var(--accent-color);">儲存目前獎項為範本</label>
@@ -181,10 +204,10 @@
                             style="color: var(--text-muted-color);">恢復預設 Logo</button>
                     </div>
                     <div>
-                        <label class="block mb-2 font-semibold" style="color: var(--accent-color);">自訂背景圖</label>
+                        <label class="block mb-2 font-semibold" style="color: var(--accent-color);">活動主視覺圖</label>
                         <input type="file" id="bg-upload" class="form-input w-full p-2 rounded" accept="image/*">
                         <button id="reset-bg-btn" class="mt-2 text-sm underline"
-                            style="color: var(--text-muted-color);">移除自訂背景</button>
+                            style="color: var(--text-muted-color);">恢復預設主視覺</button>
                     </div>
                 </div>
             </div>
@@ -421,10 +444,8 @@
     <audio id="winner-sound" src="https://hsuliang.github.io/happy.mp3" preload="auto"></audio>
 
     <footer class="app-footer">
-        <span>v3.0 丙午．春分</span> |
-        <span>由 Google Gemini 強力驅動</span> |
-        <a href="https://bit.ly/Alaing" target="_blank" rel="noopener noreferrer"
-            class="hover:text-white transition-colors">ㄚ亮笑長練功坊</a>
+        <div><span>v3.0 丙午．春分</span> | <span>由 Google Gemini 強力驅動</span> | <a href="https://bit.ly/Alaing" target="_blank" rel="noopener noreferrer">ㄚ亮笑長練功坊</a></div>
+        <div class="footer-links"><button type="button" disabled title="即將推出">使用手冊</button><button type="button" disabled title="即將推出">快捷鍵指南</button><button type="button" disabled title="即將推出">技術支援</button></div>
     </footer>
 
     <div id="duplicates-modal"

@@ -1,7 +1,25 @@
 // DOM Elements
 const mainTitle = document.getElementById('main-title');
+const homeSection = document.getElementById('home-section');
 const settingsSection = document.getElementById('settings-section');
 const lotterySection = document.getElementById('lottery-section');
+const navHomeBtn = document.getElementById('nav-home-btn');
+const navWinnersBtn = document.getElementById('nav-winners-btn');
+const navBonusBtn = document.getElementById('nav-bonus-btn');
+const navSettingsBtn = document.getElementById('nav-settings-btn');
+const navListBtn = document.getElementById('nav-list-btn');
+const enterStageBtn = document.getElementById('enter-stage-btn');
+const replaceHeroBtn = document.getElementById('replace-hero-btn');
+const homeStatusText = document.getElementById('home-status-text');
+const homeStatusIcon = document.getElementById('home-status-icon');
+const summaryPrizeCount = document.getElementById('summary-prize-count');
+const summaryRosterCount = document.getElementById('summary-roster-count');
+const summaryReadyText = document.getElementById('summary-ready-text');
+const summaryRoundCount = document.getElementById('summary-round-count');
+const heroVisual = document.getElementById('hero-visual');
+const eventTitlePill = document.getElementById('event-title-pill');
+const eventTitleText = document.getElementById('event-title-text');
+const eventTitlePopover = document.getElementById('event-title-popover');
 const sheetUrlInput = document.getElementById('sheet-url');
 const sheetNameInput = document.getElementById('sheet-name');
 const columnLetterInput = document.getElementById('column-letter');
@@ -61,14 +79,12 @@ const excludeTemplateButtonsContainer = document.getElementById('exclude-templat
 
 // Environment Tabs
 const tabModeBtn = document.getElementById('tab-mode');
-const tabTitleBtn = document.getElementById('tab-title');
 const tabPrizeBtn = document.getElementById('tab-prize');
 const tabThemeBtn = document.getElementById('tab-theme');
 const tabVisualBtn = document.getElementById('tab-visual');
 const tabSoundBtn = document.getElementById('tab-sound');
 const tabEffectBtn = document.getElementById('tab-effect');
 const tabContentMode = document.getElementById('tab-content-mode');
-const tabContentTitle = document.getElementById('tab-content-title');
 const tabContentPrize = document.getElementById('tab-content-prize');
 const tabContentTheme = document.getElementById('tab-content-theme');
 const tabContentVisual = document.getElementById('tab-content-visual');
@@ -81,7 +97,6 @@ const logoUpload = document.getElementById('logo-upload');
 const bgUpload = document.getElementById('bg-upload');
 const resetLogoBtn = document.getElementById('reset-logo-btn');
 const resetBgBtn = document.getElementById('reset-bg-btn');
-const appBgOverlay = document.getElementById('app-bg-overlay');
 
 // Mode Settings Toggle
 const simpleDrawToggle = document.getElementById('simple-draw-toggle');
@@ -137,6 +152,33 @@ let isSoundOn = true;
 const themes = [ { id: 'candy', name: '糖果王國', colors: ['#ff69b4', '#87ceeb'] }, { id: 'forest', name: '森林夥伴', colors: ['#228b22', '#ff7f50'] }, { id: 'izakaya', name: '居酒屋', colors: ['#e53e3e', '#ffab00'] }, { id: 'sakura', name: '櫻花', colors: ['#db2777', '#fdf2f8'] }, { id: 'midnight', name: '午夜', colors: ['#38bdf8', '#0f172a'] } ];
 
 function init() {
+    const savedEventTitle = localStorage.getItem('lotteryEventTitle');
+    setEventTitle(savedEventTitle || '祝您中大獎');
+    navHomeBtn.addEventListener('click', showHome);
+    navSettingsBtn.addEventListener('click', () => showSettings('mode'));
+    navListBtn.addEventListener('click', () => showSettings('list'));
+    navWinnersBtn.addEventListener('click', () => {
+        if (!hasActiveStage()) { showSettings('list'); return; }
+        switchToLotteryView();
+        document.getElementById('winners-list-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    navBonusBtn.addEventListener('click', () => {
+        if (!hasActiveStage()) { showSettings('list'); return; }
+        switchToLotteryView();
+        bonusOpenBtn.click();
+    });
+    enterStageBtn.addEventListener('click', enterStage);
+    replaceHeroBtn.addEventListener('click', () => bgUpload.click());
+    document.getElementById('summary-prizes-btn').addEventListener('click', () => showSettings('prize'));
+    document.getElementById('summary-roster-btn').addEventListener('click', () => showSettings('list'));
+    document.getElementById('summary-rounds-btn').addEventListener('click', () => showSettings('prize'));
+    document.getElementById('summary-bonus-btn').addEventListener('click', () => navBonusBtn.click());
+    eventTitlePill.addEventListener('click', () => toggleTitlePopover());
+    document.getElementById('close-title-popover').addEventListener('click', () => toggleTitlePopover(false));
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.event-title-control')) toggleTitlePopover(false);
+    });
+    prizesContainer.addEventListener('input', updateHomeSummary);
     // Main Actions
     loadButton.addEventListener('click', handleLoadData);
     drawButton.addEventListener('click', handleDrawWinner);
@@ -159,7 +201,6 @@ function init() {
     
     // Environment Tabs
     tabModeBtn.addEventListener('click', () => switchEnvTab('mode'));
-    tabTitleBtn.addEventListener('click', () => switchEnvTab('title'));
     tabPrizeBtn.addEventListener('click', () => switchEnvTab('prize'));
     tabThemeBtn.addEventListener('click', () => switchEnvTab('theme'));
     tabVisualBtn.addEventListener('click', () => switchEnvTab('visual'));
@@ -182,9 +223,7 @@ function init() {
 
     // Title Setup
     titleInput.addEventListener('input', (e) => {
-        const newTitle = e.target.value.trim();
-        mainTitle.textContent = newTitle || 'ㄚ亮笑長的抽抽樂';
-        document.title = newTitle || 'ㄚ亮笑長的抽抽樂';
+        setEventTitle(e.target.value.trim() || '祝您中大獎');
     });
     saveTitleTemplateBtn.addEventListener('click', saveTitleTemplate);
 
@@ -215,7 +254,11 @@ function init() {
     });
     document.addEventListener('keydown', (event) => {
         const target = event.target;
+        if (event.key === 'Escape') toggleTitlePopover(false);
         if (event.code !== 'Space' || !target || target.closest('button, input, textarea, select, [contenteditable="true"]')) return;
+        if (!homeSection.classList.contains('hidden') && event.target === document.body) {
+            event.preventDefault(); enterStage(); return;
+        }
         if (lotterySection.classList.contains('hidden') || !bonusModal.classList.contains('hidden') || !drawButton.offsetParent) return;
         event.preventDefault();
         if (!drawButton.disabled) drawButton.click();
@@ -306,9 +349,79 @@ function init() {
     if (savedSession) {
         recoveryModal.classList.remove('hidden');
     }
+    updateHomeSummary();
 
     window.addEventListener('resize', () => { if (document.getElementById('finished-prize-name')) { adjustPrizeNameFontSize(); } });
 };
+
+function setEventTitle(value) {
+    const title = value || '祝您中大獎';
+    eventTitleText.textContent = title;
+    if (document.activeElement !== titleInput) titleInput.value = title;
+    mainTitle.textContent = 'ㄚ亮笑長的摸彩助手';
+    document.title = 'ㄚ亮笑長的摸彩助手';
+    localStorage.setItem('lotteryEventTitle', title);
+}
+
+function toggleTitlePopover(open = eventTitlePopover.classList.contains('hidden')) {
+    eventTitlePopover.classList.toggle('hidden', !open);
+    eventTitlePill.setAttribute('aria-expanded', String(open));
+    if (open) titleInput.focus();
+}
+
+function setActiveNav(button) {
+    [navHomeBtn, navSettingsBtn, navListBtn, navWinnersBtn].forEach(nav => nav.classList.toggle('active', nav === button));
+}
+
+function hasActiveStage() {
+    return prizes.length > 0 && (participants.length > 0 || prizes.some(prize => prize.winners?.length));
+}
+
+function showHome() {
+    homeSection.classList.remove('hidden');
+    settingsSection.classList.add('hidden');
+    lotterySection.classList.add('hidden');
+    resetBtn.classList.add('hidden');
+    setActiveNav(navHomeBtn);
+    updateHomeSummary();
+    window.scrollTo(0, 0);
+}
+
+function showSettings(area) {
+    homeSection.classList.add('hidden');
+    settingsSection.classList.remove('hidden');
+    lotterySection.classList.add('hidden');
+    resetBtn.classList.toggle('hidden', !hasActiveStage());
+    if (area === 'list') {
+        setActiveNav(navListBtn);
+        switchTab('custom');
+        document.getElementById('tab-content-custom').scrollIntoView({ block: 'center' });
+    } else {
+        setActiveNav(navSettingsBtn);
+        switchEnvTab(area);
+        window.scrollTo(0, 0);
+    }
+}
+
+function enterStage() {
+    if (hasActiveStage()) switchToLotteryView();
+    else showSettings('list');
+}
+
+function updateHomeSummary() {
+    const configured = Array.from(prizesContainer.querySelectorAll('.prize-row')).filter(row =>
+        row.querySelector('.prize-name').value.trim() && Number(row.querySelector('.prize-quantity').value) > 0
+    ).length;
+    const count = prizes.length || configured;
+    summaryPrizeCount.textContent = count;
+    summaryRoundCount.textContent = count;
+    const winnerCount = prizes.reduce((total, prize) => total + (prize.winners?.length || 0), 0);
+    summaryRosterCount.textContent = participants.length + winnerCount;
+    const ready = hasActiveStage();
+    summaryReadyText.textContent = ready ? '已就緒' : '待載入名單';
+    homeStatusText.textContent = ready ? '投影準備就緒・名單已載入' : '請先載入摸彩名單';
+    homeStatusIcon.textContent = ready ? '✓' : '✦';
+}
 
 function handleAddBonusPrize() {
     const name = bonusPrizeName.value.trim();
@@ -360,18 +473,14 @@ function loadVisuals() {
     if (customLogo) {
         logoImg.src = customLogo;
         logoImg.style.visibility = 'visible';
+        logoImg.classList.remove('default-logo');
     } else {
         logoImg.src = "Logo.png";
+        logoImg.classList.add('default-logo');
     }
 
     const customBg = localStorage.getItem('customBg');
-    if (customBg) {
-        appBgOverlay.style.backgroundImage = `url(${customBg})`;
-        appBgOverlay.style.opacity = '1';
-    } else {
-        appBgOverlay.style.backgroundImage = 'none';
-        appBgOverlay.style.opacity = '0';
-    }
+    heroVisual.style.backgroundImage = customBg ? `url(${customBg})` : "url('hero-izakaya.png')";
 }
 
 // --- SESSION RECOVERY FUNCTIONS ---
@@ -383,7 +492,7 @@ function saveSession() {
         simpleDrawMode: simpleDrawToggle.checked,
         batchDrawEnabled: batchDrawToggle.checked,
         sortWinnersEnabled: sortWinnersToggle.checked,
-        title: mainTitle.textContent
+        title: eventTitleText.textContent
     };
     localStorage.setItem('lottery_session', JSON.stringify(sessionData));
 }
@@ -408,8 +517,8 @@ function loadSession() {
             sortWinnersToggle.checked = localStorage.getItem('sortWinnersEnabled') === 'true';
         }
 
-        mainTitle.textContent = data.title;
-        document.title = data.title;
+        const legacyTitle = data.title;
+        if (legacyTitle && !['ㄚ亮笑長的摸彩助手', 'ㄚ亮笑長的抽抽樂'].includes(legacyTitle)) setEventTitle(legacyTitle);
         
         recoveryModal.classList.add('hidden');
         switchToLotteryView();
@@ -508,7 +617,13 @@ function renderSavedTemplates() { const templates = getPrizeTemplates(); templat
 const playTenseMusic = () => { if (!isSoundOn) return; rollingSound.currentTime = 0; const playPromise = rollingSound.play(); if (playPromise !== undefined) { playPromise.catch(error => console.error("Error playing rolling sound:", error)); } };
 const stopTenseMusic = () => { rollingSound.pause(); rollingSound.currentTime = 0; };
 const playWinnerSound = () => { if (!isSoundOn) return; winnerSound.currentTime = 0; const playPromise = winnerSound.play(); if (playPromise !== undefined) { playPromise.catch(error => console.error("Error playing winner sound:", error)); } };
-const toggleSound = () => { isSoundOn = !isSoundOn; soundToggleBtn.textContent = isSoundOn ? '🔊' : '🔇'; if(!isSoundOn) { stopTenseMusic(); } };
+const toggleSound = () => {
+    isSoundOn = !isSoundOn;
+    document.getElementById('sound-icon').textContent = isSoundOn ? '🔊' : '🔇';
+    soundToggleBtn.lastElementChild.textContent = isSoundOn ? '音效開啟' : '音效關閉';
+    soundToggleBtn.setAttribute('aria-label', isSoundOn ? '關閉音效' : '開啟音效');
+    if (!isSoundOn) stopTenseMusic();
+};
 function switchTab(tabName) {
     activeDataSource = tabName;
     const tabs = {
@@ -524,10 +639,10 @@ function switchTab(tabName) {
     tabs[tabName].btn.classList.add('active');
     tabs[tabName].content.classList.remove('hidden');
 }
-function switchEnvTab(tabName) { const tabs = { mode: { btn: tabModeBtn, content: tabContentMode }, title: { btn: tabTitleBtn, content: tabContentTitle }, prize: { btn: tabPrizeBtn, content: tabContentPrize }, theme: { btn: tabThemeBtn, content: tabContentTheme }, visual: { btn: tabVisualBtn, content: tabContentVisual }, sound: { btn: tabSoundBtn, content: tabContentSound }, effect: { btn: tabEffectBtn, content: tabContentEffect } }; Object.values(tabs).forEach(tab => { tab.btn.classList.remove('active'); tab.content.classList.add('hidden'); }); tabs[tabName].btn.classList.add('active'); tabs[tabName].content.classList.remove('hidden'); } 
+function switchEnvTab(tabName) { const tabs = { mode: { btn: tabModeBtn, content: tabContentMode }, prize: { btn: tabPrizeBtn, content: tabContentPrize }, theme: { btn: tabThemeBtn, content: tabContentTheme }, visual: { btn: tabVisualBtn, content: tabContentVisual }, sound: { btn: tabSoundBtn, content: tabContentSound }, effect: { btn: tabEffectBtn, content: tabContentEffect } }; Object.values(tabs).forEach(tab => { tab.btn.classList.remove('active'); tab.content.classList.add('hidden'); }); tabs[tabName].btn.classList.add('active'); tabs[tabName].content.classList.remove('hidden'); }
 function handleSimpleDrawToggle(e) { const isEnabled = e.target.checked; if (isEnabled) { tabPrizeBtn.classList.add('hidden'); if (tabPrizeBtn.classList.contains('active')) { switchEnvTab('mode'); } } else { tabPrizeBtn.classList.remove('hidden'); } localStorage.setItem('simpleDrawMode', isEnabled); } 
-function addPrizeRow(name = '', quantity = 1) { const row = document.createElement('div'); row.className = 'prize-row flex items-center gap-2'; row.innerHTML = ` <input type="text" class="prize-name form-input w-full p-2 rounded" value="${name}" placeholder="獎項名稱"> <input type="number" class="prize-quantity form-input w-24 p-2 rounded" value="${quantity}" min="1" placeholder="數量"> <button class="remove-prize-btn btn-secondary px-3 py-2 rounded" style="color: var(--danger-color);">✕</button> `; prizesContainer.appendChild(row); row.querySelector('.remove-prize-btn').addEventListener('click', () => row.remove()); }
-const clearPrizes = () => { prizesContainer.innerHTML = ''; };
+function addPrizeRow(name = '', quantity = 1) { const row = document.createElement('div'); row.className = 'prize-row flex items-center gap-2'; row.innerHTML = ` <input type="text" class="prize-name form-input w-full p-2 rounded" value="${name}" placeholder="獎項名稱"> <input type="number" class="prize-quantity form-input w-24 p-2 rounded" value="${quantity}" min="1" placeholder="數量"> <button class="remove-prize-btn btn-secondary px-3 py-2 rounded" style="color: var(--danger-color);">✕</button> `; prizesContainer.appendChild(row); row.querySelector('.remove-prize-btn').addEventListener('click', () => { row.remove(); updateHomeSummary(); }); updateHomeSummary(); }
+const clearPrizes = () => { prizesContainer.innerHTML = ''; updateHomeSummary(); };
 function handleUrlParams() { const params = new URLSearchParams(window.location.search); if (params.has('sheetUrl') && params.has('sheetName') && params.has('column')) { sheetUrlInput.value = params.get('sheetUrl'); sheetNameInput.value = params.get('sheetName'); columnLetterInput.value = params.get('column'); handleLoadData(); } }
 function readAndValidatePrizes() { prizes = []; const isSimpleMode = simpleDrawToggle.checked; if (isSimpleMode) { return true; } const prizeRows = prizesContainer.querySelectorAll('.prize-row'); if (prizeRows.length === 0) { return true; } let totalPrizeQuantity = 0; for (const row of prizeRows) { const name = row.querySelector('.prize-name').value.trim(); const quantity = parseInt(row.querySelector('.prize-quantity').value, 10); if (!name) { updateStatus('獎項名稱不可為空！', true); return false; } if (isNaN(quantity) || quantity < 1) { updateStatus(`獎項「${name}」的數量必須是正整數！`, true); return false; } prizes.push({ name, quantity, winners: [] }); totalPrizeQuantity += quantity; } if (participants.length > 0 && totalPrizeQuantity > participants.length) { updateStatus(`警告：獎項總數 (${totalPrizeQuantity}) 大於參與人數 (${participants.length})！`, true); } return true; }
 
@@ -1001,9 +1116,11 @@ function loadTheme() { const savedTheme = localStorage.getItem('lotteryTheme') |
 function updateStatus(message, isError = false) { statusMessage.textContent = message; statusMessage.style.color = isError ? 'var(--danger-color)' : 'var(--accent-color)'; }
 
 function switchToLotteryView() {
+    homeSection.classList.add('hidden');
     settingsSection.classList.add('hidden');
     lotterySection.classList.remove('hidden');
     resetBtn.classList.remove('hidden');
+    setActiveNav(null);
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     window.scrollTo(0, 0);
     requestAnimationFrame(() => window.scrollTo(0, 0));
@@ -1059,7 +1176,7 @@ function updatePrizeDisplay() {
     updateDashboardStats();
 }
 
-function updateParticipantCount() { participantCountSpan.textContent = participants.length; updateDashboardStats(); }
+function updateParticipantCount() { participantCountSpan.textContent = participants.length; updateDashboardStats(); updateHomeSummary(); }
 
 function updateDashboardStats() {
     const awarded = prizes.reduce((sum, prize) => sum + prize.winners.length, 0);
@@ -1254,19 +1371,19 @@ function exportResultsToCsv() {
 }
 
 function resetApp() {
-    settingsSection.classList.remove('hidden'); lotterySection.classList.add('hidden'); resetBtn.classList.add('hidden');
+    settingsSection.classList.add('hidden'); lotterySection.classList.add('hidden'); resetBtn.classList.add('hidden');
     window.scrollTo(0, 0);
     participants = []; prizes = []; currentPrizeIndex = 0;
     winnerDisplay.textContent = '準備開始！'; winnerDisplay.classList.remove('winner-reveal');
     winnerDisplay.style.fontSize = '';
     winnersList.innerHTML = '<p class="empty-winners">幸運得主將在這裡登場</p>';
     exportCsvBtn.classList.add('hidden'); participantCountSpan.textContent = '0';
-    currentPrizeDisplay.textContent = ''; mainTitle.textContent = titleInput.value.trim() || 'ㄚ亮笑長的抽抽樂';
+    currentPrizeDisplay.textContent = ''; setEventTitle(titleInput.value.trim() || '祝您中大獎');
     participantLabel.textContent = '剩餘摸彩人數'; drawButton.textContent = '開始摸彩'; drawButton.disabled = false;
     sheetUrlInput.value = ''; sheetNameInput.value = '工作表1'; columnLetterInput.value = 'A';
     csvUrlInput.value = ''; csvColumnLetterInput.value = 'A'; customListInput.value = ''; excludeListInput.value = '';
     prizesContainer.innerHTML = ''; addPrizeRow('三獎', 3); addPrizeRow('二獎', 2); addPrizeRow('頭獎', 1);
-    loadButton.disabled = false; updateStatus(''); switchTab('custom'); clearSession(); updateDashboardStats();
+    loadButton.disabled = false; updateStatus(''); switchTab('custom'); clearSession(); updateDashboardStats(); showHome();
 }
 
 function launchConfetti() {
