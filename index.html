@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <link rel="icon" type="image/png" href="Logo.png">
-    <link rel="stylesheet" href="style.css?v=20261014-2">
+    <link rel="stylesheet" href="style.css?v=20261014-5">
 </head>
 
 <body class="app-body">
@@ -53,7 +53,8 @@
                 <button id="fullscreen-btn" class="nav-button" type="button" aria-label="進入全螢幕"><span aria-hidden="true">⛶</span><span id="fullscreen-label">全螢幕</span></button>
                 <button id="nav-winners-btn" class="nav-button" type="button"><span aria-hidden="true">🏅</span>中獎記錄</button>
                 <button id="nav-bonus-btn" class="nav-button" type="button"><span aria-hidden="true">🎁</span>老闆加碼</button>
-                <button id="nav-settings-btn" class="nav-button nav-button-accent" type="button"><span aria-hidden="true">☷</span>系統設定</button>
+                <button id="nav-settings-btn" class="nav-button nav-button-accent" type="button"><span aria-hidden="true">☷</span>環境設定</button>
+                <button id="nav-roster-btn" class="nav-button nav-button-accent" type="button"><span aria-hidden="true">♧</span>名單設定</button>
                 <button id="reset-btn" class="header-reset-button hidden" title="結束活動並返回設定">↺ <span>重新設定</span></button>
             </nav>
         </header>
@@ -85,12 +86,11 @@
     <section id="settings-section" class="settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
       <div class="settings-dialog">
         <div class="settings-dialog-header">
-            <div><h2 id="settings-dialog-title">系統設定</h2><p>管理環境與投影、參與名單及獎項輪次</p></div>
-            <button id="close-settings-btn" class="dialog-close" type="button" aria-label="關閉系統設定">✕</button>
+            <div><h2 id="settings-dialog-title">環境設定</h2><p id="settings-dialog-description">管理環境與投影及獎項輪次</p></div>
+            <button id="close-settings-btn" class="dialog-close" type="button" aria-label="關閉設定">✕</button>
         </div>
-        <nav class="settings-category-nav" aria-label="系統設定分類">
+        <nav class="settings-category-nav" aria-label="環境設定分類">
             <button id="settings-category-env" class="active" type="button">⚙ 環境與投影</button>
-            <button id="settings-category-list" type="button">♧ 名單匯入與過濾</button>
             <button id="settings-category-prize" type="button">🏅 獎項輪次配置</button>
         </nav>
         <div id="settings-body" class="setup-layout settings-body" data-category="env">
@@ -111,8 +111,6 @@
                         class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg">布景主題</button>
                     <button id="tab-visual"
                         class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg">自訂視覺</button>
-                    <button id="tab-sound"
-                        class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg">音效開關</button>
                     <button id="tab-effect"
                         class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg">特效設定</button>
                 </nav>
@@ -220,13 +218,6 @@
                 </div>
             </div>
 
-            <div id="tab-content-sound" class="hidden mt-6">
-                <div class="flex items-center justify-between">
-                    <span class="font-semibold text-lg" style="color: var(--text-color);">點擊圖示以開啟或關閉音效</span>
-                    <span class="text-sm">可使用頁面右上角的音效按鈕切換。</span>
-                </div>
-            </div>
-
             <div id="tab-content-effect" class="hidden mt-6">
                 <div>
                     <label for="winner-effect-select" class="block mb-2 font-semibold"
@@ -299,8 +290,11 @@
                         <div>
                             <label for="column-letter" class="block mb-1 font-semibold"
                                 style="color: var(--accent-color);">名單在哪一欄？</label>
-                            <input type="text" id="column-letter" maxlength="2" class="form-input w-full p-2 rounded"
-                                value="A" placeholder="A, B, C...">
+                            <select id="column-letter" class="form-input w-full p-2 rounded">
+                                <option value="A">A 欄</option><option value="B">B 欄</option><option value="C">C 欄</option><option value="D">D 欄</option><option value="E">E 欄</option>
+                                <option value="F">F 欄</option><option value="G">G 欄</option><option value="H">H 欄</option><option value="I">I 欄</option><option value="J">J 欄</option><option value="custom">自訂</option>
+                            </select>
+                            <input type="text" id="column-letter-custom" maxlength="2" class="form-input w-full p-2 rounded mt-2 hidden" placeholder="例如 K 或 AA" aria-label="自訂名單欄位">
                         </div>
                     </div>
                     <div class="mt-2">
@@ -324,8 +318,11 @@
                     <div>
                         <label for="csv-column-letter" class="block mb-1 font-semibold"
                             style="color: var(--accent-color);">名單在哪一欄？</label>
-                        <input type="text" id="csv-column-letter" maxlength="2" class="form-input w-full p-2 rounded"
-                            value="A" placeholder="A, B, C...">
+                        <select id="csv-column-letter" class="form-input w-full p-2 rounded">
+                            <option value="A">A 欄</option><option value="B">B 欄</option><option value="C">C 欄</option><option value="D">D 欄</option><option value="E">E 欄</option>
+                            <option value="F">F 欄</option><option value="G">G 欄</option><option value="H">H 欄</option><option value="I">I 欄</option><option value="J">J 欄</option><option value="custom">自訂</option>
+                        </select>
+                        <input type="text" id="csv-column-letter-custom" maxlength="2" class="form-input w-full p-2 rounded mt-2 hidden" placeholder="例如 K 或 AA" aria-label="自訂名單欄位">
                     </div>
                 </div>
                 <div class="mt-2">
@@ -376,11 +373,6 @@
                 </div>
             </div>
 
-        </div>
-
-        <div class="mt-8 space-y-4">
-            <button id="load-button"
-                class="w-full btn-primary py-3 rounded-lg text-xl font-bold shadow-lg">載入名單並開始</button>
         </div>
 
         <p id="status-message" class="text-center mt-4 h-6" role="status" aria-live="polite" style="color: var(--accent-color);"></p>
@@ -538,9 +530,9 @@
         class="fixed inset-0 z-[60] flex items-center justify-center hidden bg-black/80 backdrop-blur-md p-4">
         <div class="card max-w-md w-full p-8 rounded-lg shadow-2xl text-center border-2"
             style="border-color: var(--accent-color);">
-            <div class="text-5xl mb-4">回覆提醒</div>
-            <h2 class="text-2xl font-bold mb-4" style="color: var(--accent-color);">偵測到未完成的活動</h2>
-            <p class="mb-8" style="color: var(--text-color);">系統發現您上次有尚未結束的抽獎進度，請問要恢復繼續抽獎，還是重新開始新活動？</p>
+            <div class="text-5xl mb-4">恢復提醒</div>
+            <h2 id="recovery-title" class="text-2xl font-bold mb-4" style="color: var(--accent-color);">偵測到未完成的活動</h2>
+            <p id="recovery-description" class="mb-8" style="color: var(--text-color);">系統發現您上次有尚未結束的抽獎進度，請問要恢復繼續抽獎，還是重新開始新活動？</p>
             <div class="flex flex-col gap-3">
                 <button id="resume-session-btn" class="btn-primary py-4 rounded-lg text-xl font-bold shadow-lg">恢復進度
                     (繼續抽)</button>
@@ -553,7 +545,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20261014-2"></script>
+    <script src="script.js?v=20261014-5"></script>
 </body>
 
 </html>

@@ -178,21 +178,18 @@ body.modal-open { overflow: hidden; }
 .dialog-close { flex: none; width: 38px; height: 38px; border: 0; border-radius: 9px; background: transparent; color: var(--text-color); font-size: 22px; }
 .dialog-close:hover { background: var(--secondary-color); }
 .settings-category-nav { display: flex; gap: 12px; flex: none; overflow-x: auto; padding: 0 28px; background: var(--tag-bg); border-bottom: 1px solid var(--border-color); }
+.settings-overlay[data-mode="list"] .settings-category-nav { display: none; }
 .settings-category-nav button { flex: none; min-height: 53px; padding: 7px 12px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--text-muted-color); font-weight: 800; white-space: nowrap; }
 .settings-category-nav button.active { border-bottom-color: var(--accent-color); color: var(--accent-color); }
 .settings-body.setup-layout { display: block; flex: 1; min-height: 0; overflow-y: auto; padding: 0 28px 20px; }
 .settings-body > .setup-intro { display: none; }
 .settings-body.setup-layout > .card { padding: 24px 0 8px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .settings-body[data-category="env"] #roster-settings-card,
-.settings-body[data-category="env"] > .mt-8,
 .settings-body[data-category="env"] > #status-message,
 .settings-body[data-category="list"] #env-settings-card,
-.settings-body[data-category="prize"] #roster-settings-card,
-.settings-body[data-category="prize"] > .mt-8,
-.settings-body[data-category="prize"] > #status-message { display: none; }
+.settings-body[data-category="prize"] #roster-settings-card { display: none; }
 .settings-body[data-category="prize"] #env-settings-card > .border-b { display: none; }
 #env-settings-card #tab-prize { display: none; }
-.settings-body > .mt-8 { margin-top: 18px; }
 .settings-dialog-footer { display: flex; justify-content: flex-end; flex: none; gap: 12px; padding: 16px 28px; border-top: 1px solid var(--border-color); background: var(--tag-bg); }
 .settings-dialog-footer .btn-primary { min-height: 44px; padding: 8px 25px; border-radius: 10px; font-weight: 800; }
 .settings-dialog-footer .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
@@ -225,7 +222,6 @@ textarea.form-input { min-height: 144px; }
 .btn-primary:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
 .btn-secondary { background: var(--secondary-color); color: var(--text-color); border-color: var(--border-color); }
 .btn-secondary:hover { background: var(--secondary-hover-color); }
-#load-button { min-height: 58px; border-radius: 999px; }
 .toggle-switch-bg:after { background-color: #fff; }
 input:checked + .toggle-switch-bg { background-color: var(--primary-color); }
 .theme-button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; transition: transform .2s ease; }

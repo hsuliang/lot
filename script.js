@@ -7,12 +7,13 @@ const navHomeBtn = document.getElementById('nav-home-btn');
 const navWinnersBtn = document.getElementById('nav-winners-btn');
 const navBonusBtn = document.getElementById('nav-bonus-btn');
 const navSettingsBtn = document.getElementById('nav-settings-btn');
+const navRosterBtn = document.getElementById('nav-roster-btn');
 const settingsBody = document.getElementById('settings-body');
 const settingsCategoryButtons = {
     env: document.getElementById('settings-category-env'),
-    list: document.getElementById('settings-category-list'),
     prize: document.getElementById('settings-category-prize')
 };
+const settingsDoneBtn = document.getElementById('settings-done-btn');
 const winnersModal = document.getElementById('winners-modal');
 const winnersModalList = document.getElementById('winners-modal-list');
 const downloadWinnersBtn = document.getElementById('download-winners-btn');
@@ -31,8 +32,10 @@ const eventTitlePopover = document.getElementById('event-title-popover');
 const sheetUrlInput = document.getElementById('sheet-url');
 const sheetNameInput = document.getElementById('sheet-name');
 const columnLetterInput = document.getElementById('column-letter');
+const columnLetterCustomInput = document.getElementById('column-letter-custom');
 const csvUrlInput = document.getElementById('csv-url-input');
 const csvColumnLetterInput = document.getElementById('csv-column-letter');
+const csvColumnLetterCustomInput = document.getElementById('csv-column-letter-custom');
 const customListInput = document.getElementById('custom-list');
 const prizesContainer = document.getElementById('prizes-container');
 const addPrizeBtn = document.getElementById('add-prize-btn');
@@ -41,7 +44,6 @@ const templateNameInput = document.getElementById('template-name-input');
 const saveTemplateBtn = document.getElementById('save-template-btn');
 const templateButtonsContainer = document.getElementById('template-buttons-container');
 const themeSelector = document.getElementById('theme-selector');
-const loadButton = document.getElementById('load-button');
 const drawButton = document.getElementById('draw-button');
 const exportCsvBtn = document.getElementById('export-csv-btn');
 const statusMessage = document.getElementById('status-message');
@@ -90,13 +92,11 @@ const tabModeBtn = document.getElementById('tab-mode');
 const tabPrizeBtn = document.getElementById('tab-prize');
 const tabThemeBtn = document.getElementById('tab-theme');
 const tabVisualBtn = document.getElementById('tab-visual');
-const tabSoundBtn = document.getElementById('tab-sound');
 const tabEffectBtn = document.getElementById('tab-effect');
 const tabContentMode = document.getElementById('tab-content-mode');
 const tabContentPrize = document.getElementById('tab-content-prize');
 const tabContentTheme = document.getElementById('tab-content-theme');
 const tabContentVisual = document.getElementById('tab-content-visual');
-const tabContentSound = document.getElementById('tab-content-sound');
 const tabContentEffect = document.getElementById('tab-content-effect');
 
 // Visual Customization Elements
@@ -165,10 +165,14 @@ function init() {
     setEventTitle(savedEventTitle || '祝您中大獎');
     navHomeBtn.addEventListener('click', showHome);
     navSettingsBtn.addEventListener('click', () => showSettings('env'));
+    navRosterBtn.addEventListener('click', () => showSettings('list'));
     navWinnersBtn.addEventListener('click', openWinnersModal);
     Object.entries(settingsCategoryButtons).forEach(([category, button]) => button.addEventListener('click', () => selectSettingsCategory(category)));
     document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
-    document.getElementById('settings-done-btn').addEventListener('click', closeSettings);
+    settingsDoneBtn.addEventListener('click', () => {
+        if (settingsBody.dataset.category === 'list') handleLoadData();
+        else closeSettings();
+    });
     document.getElementById('close-winners-btn').addEventListener('click', closeWinnersModal);
     downloadWinnersBtn.addEventListener('click', () => {
         const latest = getLatestResults();
@@ -194,7 +198,6 @@ function init() {
     });
     prizesContainer.addEventListener('input', updateHomeSummary);
     // Main Actions
-    loadButton.addEventListener('click', handleLoadData);
     drawButton.addEventListener('click', handleDrawWinner);
     resetBtn.addEventListener('click', () => {
         if (confirm('您確定要重置活動嗎？這將會清除目前的進度與所有名單。')) {
@@ -218,8 +221,10 @@ function init() {
     tabPrizeBtn.addEventListener('click', () => showSettings('prize'));
     tabThemeBtn.addEventListener('click', () => switchEnvTab('theme'));
     tabVisualBtn.addEventListener('click', () => switchEnvTab('visual'));
-    tabSoundBtn.addEventListener('click', () => switchEnvTab('sound'));
     tabEffectBtn.addEventListener('click', () => switchEnvTab('effect'));
+    [[columnLetterInput, columnLetterCustomInput], [csvColumnLetterInput, csvColumnLetterCustomInput]].forEach(([select, input]) => {
+        select.addEventListener('change', () => input.classList.toggle('hidden', select.value !== 'custom'));
+    });
 
     // Visual Customization Actions
     logoUpload.addEventListener('change', (e) => handleImageUpload(e, 'customLogo'));
@@ -321,7 +326,7 @@ function init() {
     dupKeepOneBtn.addEventListener('click', () => handleDuplicateAction('keepOne'));
     dupCancelBtn.addEventListener('click', () => {
         duplicatesModal.classList.add('hidden');
-        loadButton.disabled = false;
+        settingsDoneBtn.disabled = false;
         updateStatus('載入已取消。');
     });
 
@@ -329,7 +334,7 @@ function init() {
     confirmColumnSelectionBtn.addEventListener('click', handleColumnSelectionConfirmed);
     cancelColumnSelectionBtn.addEventListener('click', () => {
         columnSelectionModal.classList.add('hidden');
-        loadButton.disabled = false;
+        settingsDoneBtn.disabled = false;
         updateStatus('載入已取消。');
         pendingLoadedData = null;
     });
@@ -377,6 +382,13 @@ function init() {
     // Check for existing session
     const savedSession = localStorage.getItem('lottery_session');
     if (savedSession) {
+        try {
+            if (JSON.parse(savedSession).stageStarted === false) {
+                document.getElementById('recovery-title').textContent = '偵測到已載入的名單';
+                document.getElementById('recovery-description').textContent = '可恢復名單並回到活動大廳，準備好後再進入摸彩現場。';
+                resumeSessionBtn.textContent = '恢復名單並返回活動大廳';
+            }
+        } catch (error) { console.error('無法讀取已儲存的進度：', error); }
         recoveryModal.classList.remove('hidden');
     }
     updateHomeSummary();
@@ -400,7 +412,7 @@ function toggleTitlePopover(open = eventTitlePopover.classList.contains('hidden'
 }
 
 function setActiveNav(button) {
-    [navHomeBtn, navSettingsBtn].forEach(nav => nav.classList.toggle('active', nav === button));
+    [navHomeBtn, navSettingsBtn, navRosterBtn].forEach(nav => nav.classList.toggle('active', nav === button));
 }
 
 function hasActiveStage() {
@@ -421,6 +433,12 @@ function showHome() {
 function showSettings(area) {
     const category = area === 'list' ? 'list' : area === 'prize' && !simpleDrawToggle.checked ? 'prize' : 'env';
     lastFocusedElement = document.activeElement;
+    updateStatus('');
+    settingsSection.dataset.mode = category === 'list' ? 'list' : 'env';
+    document.getElementById('settings-dialog-title').textContent = category === 'list' ? '名單設定' : '環境設定';
+    document.getElementById('settings-dialog-description').textContent = category === 'list'
+        ? '匯入與過濾參與名單' : '管理環境與投影及獎項輪次';
+    settingsDoneBtn.textContent = category === 'list' ? '完成設定並載入名單' : '完成設定';
     settingsSection.classList.remove('hidden');
     selectSettingsCategory(category);
     document.body.classList.add('modal-open');
@@ -451,8 +469,20 @@ function closeWinnersModal() {
 }
 
 function enterStage() {
-    if (hasActiveStage()) switchToLotteryView();
-    else showSettings('list');
+    if (hasActiveStage()) { switchToLotteryView(); return; }
+    if (participants.length === 0) { showSettings('list'); return; }
+    if (!readAndValidatePrizes()) {
+        const error = statusMessage.textContent;
+        showSettings('prize');
+        updateStatus(error, true);
+        return;
+    }
+    if (!simpleDrawToggle.checked && prizes.length === 0) {
+        showSettings('prize');
+        updateStatus('請先設定至少一個獎項。', true);
+        return;
+    }
+    switchToLotteryView();
 }
 
 function updateHomeSummary() {
@@ -464,10 +494,12 @@ function updateHomeSummary() {
     summaryRoundCount.textContent = count;
     const winnerCount = prizes.reduce((total, prize) => total + (prize.winners?.length || 0), 0);
     summaryRosterCount.textContent = participants.length + winnerCount;
-    const ready = hasActiveStage();
-    summaryReadyText.textContent = ready ? '已就緒' : '待載入名單';
-    homeStatusText.textContent = ready ? '投影準備就緒・名單已載入' : '請先載入摸彩名單';
-    homeStatusIcon.textContent = ready ? '✓' : '✦';
+    const rosterLoaded = participants.length > 0;
+    const ready = rosterLoaded && (simpleDrawToggle.checked || count > 0);
+    summaryReadyText.textContent = ready ? '已就緒' : rosterLoaded ? '待設定獎項' : '待載入名單';
+    homeStatusText.textContent = ready ? '投影準備就緒・名單已載入'
+        : rosterLoaded ? '名單已載入・請設定獎項' : '請先載入摸彩名單';
+    homeStatusIcon.textContent = rosterLoaded ? '✓' : '✦';
 }
 
 function handleAddBonusPrize() {
@@ -536,6 +568,7 @@ function saveSession() {
         participants,
         prizes,
         currentPrizeIndex,
+        stageStarted: !lotterySection.classList.contains('hidden'),
         simpleDrawMode: simpleDrawToggle.checked,
         batchDrawEnabled: batchDrawToggle.checked,
         sortWinnersEnabled: sortWinnersToggle.checked,
@@ -641,9 +674,11 @@ function loadSession() {
         if (legacyTitle && !['ㄚ亮笑長的摸彩助手', 'ㄚ亮笑長的抽抽樂'].includes(legacyTitle)) setEventTitle(legacyTitle);
         
         recoveryModal.classList.add('hidden');
-        switchToLotteryView();
-        // Force sort on session load if enabled to ensure consistent state
-        updateWinnersList(sortWinnersToggle.checked); 
+        if (data.stageStarted === false) showHome();
+        else {
+            switchToLotteryView();
+            updateWinnersList(sortWinnersToggle.checked);
+        }
         updateStatus('進度已恢復。');
     } catch (e) {
         console.error("恢復進度失敗:", e);
@@ -745,7 +780,7 @@ const toggleSound = () => {
     if (!isSoundOn) stopTenseMusic();
 };
 function switchTab(tabName) {
-    activeDataSource = tabName;
+    if (tabName !== 'exclude') activeDataSource = tabName;
     const tabs = {
         custom: { btn: tabCustomBtn, content: tabContentCustom },
         cloud: { btn: tabCloudBtn, content: tabContentCloud },
@@ -759,15 +794,34 @@ function switchTab(tabName) {
     tabs[tabName].btn.classList.add('active');
     tabs[tabName].content.classList.remove('hidden');
 }
-function switchEnvTab(tabName) { const tabs = { mode: { btn: tabModeBtn, content: tabContentMode }, prize: { btn: tabPrizeBtn, content: tabContentPrize }, theme: { btn: tabThemeBtn, content: tabContentTheme }, visual: { btn: tabVisualBtn, content: tabContentVisual }, sound: { btn: tabSoundBtn, content: tabContentSound }, effect: { btn: tabEffectBtn, content: tabContentEffect } }; Object.values(tabs).forEach(tab => { tab.btn.classList.remove('active'); tab.content.classList.add('hidden'); }); tabs[tabName].btn.classList.add('active'); tabs[tabName].content.classList.remove('hidden'); }
+function switchEnvTab(tabName) { const tabs = { mode: { btn: tabModeBtn, content: tabContentMode }, prize: { btn: tabPrizeBtn, content: tabContentPrize }, theme: { btn: tabThemeBtn, content: tabContentTheme }, visual: { btn: tabVisualBtn, content: tabContentVisual }, effect: { btn: tabEffectBtn, content: tabContentEffect } }; Object.values(tabs).forEach(tab => { tab.btn.classList.remove('active'); tab.content.classList.add('hidden'); }); tabs[tabName].btn.classList.add('active'); tabs[tabName].content.classList.remove('hidden'); }
 function handleSimpleDrawToggle(e) { const isEnabled = e.target.checked; tabPrizeBtn.classList.toggle('hidden', isEnabled); settingsCategoryButtons.prize.classList.toggle('hidden', isEnabled); if (isEnabled && settingsBody.dataset.category === 'prize') selectSettingsCategory('env'); localStorage.setItem('simpleDrawMode', isEnabled); }
 function addPrizeRow(name = '', quantity = 1) { const row = document.createElement('div'); row.className = 'prize-row flex items-center gap-2'; row.innerHTML = ` <input type="text" class="prize-name form-input w-full p-2 rounded" value="${name}" placeholder="獎項名稱"> <input type="number" class="prize-quantity form-input w-24 p-2 rounded" value="${quantity}" min="1" placeholder="數量"> <button class="remove-prize-btn btn-secondary px-3 py-2 rounded" style="color: var(--danger-color);">✕</button> `; prizesContainer.appendChild(row); row.querySelector('.remove-prize-btn').addEventListener('click', () => { row.remove(); updateHomeSummary(); }); updateHomeSummary(); }
 const clearPrizes = () => { prizesContainer.innerHTML = ''; updateHomeSummary(); };
-function handleUrlParams() { const params = new URLSearchParams(window.location.search); if (params.has('sheetUrl') && params.has('sheetName') && params.has('column')) { sheetUrlInput.value = params.get('sheetUrl'); sheetNameInput.value = params.get('sheetName'); columnLetterInput.value = params.get('column'); handleLoadData(); } }
+function setColumnChoice(select, customInput, column) {
+    const letter = column.trim().toUpperCase();
+    select.value = /^[A-J]$/.test(letter) ? letter : 'custom';
+    customInput.value = select.value === 'custom' ? letter : '';
+    customInput.classList.toggle('hidden', select.value !== 'custom');
+}
+
+function selectedColumn(select, customInput) {
+    const letter = (select.value === 'custom' ? customInput.value : select.value).trim().toUpperCase();
+    if (!/^[A-Z]{1,2}$/.test(letter)) {
+        updateStatus('請選擇 A～J 欄，或在「自訂」輸入有效欄位（例如 K 或 AA）。', true);
+        settingsDoneBtn.disabled = false;
+        return null;
+    }
+    return { letter, index: [...letter].reduce((index, char) => index * 26 + char.charCodeAt(0) - 64, 0) - 1 };
+}
+
+function handleUrlParams() { const params = new URLSearchParams(window.location.search); if (params.has('sheetUrl') && params.has('sheetName') && params.has('column')) { sheetUrlInput.value = params.get('sheetUrl'); sheetNameInput.value = params.get('sheetName'); setColumnChoice(columnLetterInput, columnLetterCustomInput, params.get('column')); switchTab('cloud'); handleLoadData(); } }
 function readAndValidatePrizes() { prizes = []; const isSimpleMode = simpleDrawToggle.checked; if (isSimpleMode) { return true; } const prizeRows = prizesContainer.querySelectorAll('.prize-row'); if (prizeRows.length === 0) { return true; } let totalPrizeQuantity = 0; for (const row of prizeRows) { const name = row.querySelector('.prize-name').value.trim(); const quantity = parseInt(row.querySelector('.prize-quantity').value, 10); if (!name) { updateStatus('獎項名稱不可為空！', true); return false; } if (isNaN(quantity) || quantity < 1) { updateStatus(`獎項「${name}」的數量必須是正整數！`, true); return false; } prizes.push({ name, quantity, winners: [] }); totalPrizeQuantity += quantity; } if (participants.length > 0 && totalPrizeQuantity > participants.length) { updateStatus(`警告：獎項總數 (${totalPrizeQuantity}) 大於參與人數 (${participants.length})！`, true); } return true; }
 
 async function handleLoadData() {
-    loadButton.disabled = true;
+    if (settingsDoneBtn.disabled) return;
+    if (tabExcludeBtn.classList.contains('active')) switchTab(activeDataSource);
+    settingsDoneBtn.disabled = true;
     updateStatus('正在處理名單...');
     if (activeDataSource === 'cloud') {
         await loadFromCloud();
@@ -884,10 +938,11 @@ function parseCSV(text) {
 async function loadFromCloud() {
     const sheetUrl = sheetUrlInput.value.trim();
     const sheetName = sheetNameInput.value.trim();
-    const columnLetter = columnLetterInput.value.trim().toUpperCase();
-    if (!sheetUrl) { updateStatus('請輸入 Google 試算表「共用」網址！', true); loadButton.disabled = false; return; }
+    if (!sheetUrl) { updateStatus('請輸入 Google 試算表「共用」網址！', true); settingsDoneBtn.disabled = false; return; }
     const sheetIdMatch = sheetUrl.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    if (!sheetIdMatch || !sheetIdMatch[1]) { updateStatus('無法從「共用」網址中解析出試算表 ID，請確認網址是否正確。', true); loadButton.disabled = false; return; }
+    if (!sheetIdMatch || !sheetIdMatch[1]) { updateStatus('無法從「共用」網址中解析出試算表 ID，請確認網址是否正確。', true); settingsDoneBtn.disabled = false; return; }
+    const column = selectedColumn(columnLetterInput, columnLetterCustomInput);
+    if (!column) return;
     const sheetId = sheetIdMatch[1];
     updateStatus('正在從雲端讀取名單...');
     try {
@@ -902,25 +957,27 @@ async function loadFromCloud() {
         if (rows.length === 0) throw new Error("CSV 資料為空");
 
         const headers = rows[0]; 
-        const nameColIndex = columnLetter.charCodeAt(0) - 'A'.charCodeAt(0);
+        const nameColIndex = column.index;
+        if (nameColIndex >= headers.length) throw new Error(`試算表沒有 ${column.letter} 欄`);
         
         pendingLoadedData = { rows, nameColIndex };
         showColumnSelectionModal(headers, nameColIndex);
 
     } catch (error) {
         console.error('讀取共用連結時發生錯誤:', error);
-        updateStatus('讀取失敗！請檢查網址是否正確，以及網路連線。', true);
-        loadButton.disabled = false;
+        updateStatus(error.message.startsWith('試算表沒有') ? error.message : '讀取失敗！請檢查網址是否正確，以及網路連線。', true);
+        settingsDoneBtn.disabled = false;
     }
 }
 
 async function loadFromPublishedCsv() {
     const url = csvUrlInput.value.trim();
-    if (!url) { updateStatus('請輸入「發布到網路」的 CSV 網址！', true); loadButton.disabled = false; return; }
-    if (!url.includes('/pub?gid=') || !url.includes('output=csv')) { updateStatus('網址格式錯誤！請確認是「發布到網路」並選擇 CSV 格式的網址。', true); loadButton.disabled = false; return; }
-    const columnLetter = csvColumnLetterInput.value.trim().toUpperCase();
-    const nameColIndex = columnLetter.charCodeAt(0) - 'A'.charCodeAt(0);
-    updateStatus(`正在從發布的連結讀取名單 (${columnLetter}欄)...`);
+    if (!url) { updateStatus('請輸入「發布到網路」的 CSV 網址！', true); settingsDoneBtn.disabled = false; return; }
+    if (!url.includes('/pub?gid=') || !url.includes('output=csv')) { updateStatus('網址格式錯誤！請確認是「發布到網路」並選擇 CSV 格式的網址。', true); settingsDoneBtn.disabled = false; return; }
+    const column = selectedColumn(csvColumnLetterInput, csvColumnLetterCustomInput);
+    if (!column) return;
+    const nameColIndex = column.index;
+    updateStatus(`正在從發布的連結讀取名單 (${column.letter}欄)...`);
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`網路回應錯誤: ${response.statusText}`);
@@ -930,14 +987,15 @@ async function loadFromPublishedCsv() {
         if (rows.length === 0) throw new Error("CSV 資料為空");
         
         const headers = rows[0];
+        if (nameColIndex >= headers.length) throw new Error(`CSV 沒有 ${column.letter} 欄`);
         
         pendingLoadedData = { rows, nameColIndex };
         showColumnSelectionModal(headers, nameColIndex);
 
     } catch (error) {
         console.error('讀取發布的 CSV 時發生錯誤:', error);
-        updateStatus('讀取失敗！請檢查網址是否正確，以及網路連線。', true);
-        loadButton.disabled = false;
+        updateStatus(error.message.startsWith('CSV 沒有') ? error.message : '讀取失敗！請檢查網址是否正確，以及網路連線。', true);
+        settingsDoneBtn.disabled = false;
     }
 }
 
@@ -1055,18 +1113,31 @@ function resolveNameCollisionsAndSetParticipants(objList) {
         }
     });
 
-    participants = finalNames;
-
     const excludeRaw = excludeListInput.value;
     const excludeNamesArr = excludeRaw.split(/[,，\n]+/ ).map(name => name.trim()).filter(name => name.length > 0);
-    
-    if (participants.length > 0 && readAndValidatePrizes()) {
-        updateStatus(`成功載入 ${participants.length} 位參與者！` + (excludeNamesArr.length ? ` (已排除名單上的 ${excludeNamesArr.length} 人)` : ''), false);
-        switchToLotteryView();
-    } else {
-        if (participants.length === 0) updateStatus(`載入的名單中沒有有效的名字。`, true);
-        loadButton.disabled = false;
+    completeRosterLoad(finalNames, `成功載入 ${finalNames.length} 位參與者！` +
+        (excludeNamesArr.length ? ` (已排除名單上的 ${excludeNamesArr.length} 人)` : ''));
+}
+
+function completeRosterLoad(names, message) {
+    settingsDoneBtn.disabled = false;
+    if (names.length === 0) {
+        updateStatus('載入的名單中沒有有效的名字。', true);
+        return;
     }
+    participants = names;
+    prizes = [];
+    currentPrizeIndex = 0;
+    winnerDisplay.textContent = '準備開始！';
+    winnerDisplay.classList.remove('winner-reveal');
+    winnerDisplay.style.fontSize = '';
+    winnersList.innerHTML = '<p class="empty-winners">幸運得主將在這裡登場</p>';
+    exportCsvBtn.classList.add('hidden');
+    drawButton.textContent = '開始摸彩';
+    drawButton.disabled = false;
+    updateStatus(message);
+    showHome();
+    saveSession();
 }
 
 function loadFromCustomInput() { 
@@ -1077,15 +1148,8 @@ function loadFromCustomInput() {
         const excludeRaw = excludeListInput.value;
         const excludeNames = new Set(excludeRaw.split(/[,，\n]+/ ).map(name => name.trim()).filter(name => name.length > 0));
         
-        participants = rawStrings.filter(name => !excludeNames.has(name));
-        
-        if (participants.length > 0 && readAndValidatePrizes()) {
-            updateStatus(`成功載入 ${participants.length} 個抽獎名標！`, false);
-            switchToLotteryView();
-        } else {
-            if (participants.length === 0) updateStatus(`載入的名單中沒有有效的名字。`, true);
-            loadButton.disabled = false;
-        }
+        const names = rawStrings.filter(name => !excludeNames.has(name));
+        completeRosterLoad(names, `成功載入 ${names.length} 位參與者！`);
         return;
     }
 
@@ -1505,10 +1569,10 @@ function resetApp() {
     exportCsvBtn.classList.add('hidden'); participantCountSpan.textContent = '0';
     currentPrizeDisplay.textContent = ''; setEventTitle(titleInput.value.trim() || '祝您中大獎');
     participantLabel.textContent = '剩餘摸彩人數'; drawButton.textContent = '開始摸彩'; drawButton.disabled = false;
-    sheetUrlInput.value = ''; sheetNameInput.value = '工作表1'; columnLetterInput.value = 'A';
-    csvUrlInput.value = ''; csvColumnLetterInput.value = 'A'; customListInput.value = ''; excludeListInput.value = '';
+    sheetUrlInput.value = ''; sheetNameInput.value = '工作表1'; setColumnChoice(columnLetterInput, columnLetterCustomInput, 'A');
+    csvUrlInput.value = ''; setColumnChoice(csvColumnLetterInput, csvColumnLetterCustomInput, 'A'); customListInput.value = ''; excludeListInput.value = '';
     prizesContainer.innerHTML = ''; addPrizeRow('三獎', 3); addPrizeRow('二獎', 2); addPrizeRow('頭獎', 1);
-    loadButton.disabled = false; updateStatus(''); switchTab('custom'); clearSession(); updateDashboardStats(); showHome();
+    settingsDoneBtn.disabled = false; updateStatus(''); switchTab('custom'); clearSession(); updateDashboardStats(); showHome();
 }
 
 function launchConfetti() {
