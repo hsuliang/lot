@@ -57,7 +57,6 @@ const currentPrizeProgress = document.getElementById('current-prize-progress');
 const awardedProgress = document.getElementById('awarded-progress');
 const prizeProgressList = document.getElementById('prize-progress-list');
 const singleDrawCount = document.getElementById('single-draw-count');
-const bonusOpenBtn = document.getElementById('bonus-open-btn');
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 const soundToggleBtn = document.getElementById('sound-toggle-btn');
 const resetBtn = document.getElementById('reset-btn');
@@ -184,7 +183,7 @@ function init() {
     navBonusBtn.addEventListener('click', () => {
         if (!hasActiveStage()) { showSettings('list'); return; }
         switchToLotteryView();
-        bonusOpenBtn.click();
+        openBonusModal();
     });
     enterStageBtn.addEventListener('click', enterStage);
     replaceHeroBtn.addEventListener('click', () => bgUpload.click());
@@ -259,7 +258,8 @@ function init() {
         bonusModal.classList.remove('hidden');
     };
     participantCountSpan.addEventListener('click', openBonusModal);
-    bonusOpenBtn.addEventListener('click', openBonusModal);
+    window.addEventListener('resize', fitWinnerNames);
+    document.fonts?.ready.then(fitWinnerNames);
     cancelBonusBtn.addEventListener('click', () => {
         bonusModal.classList.add('hidden');
     });
@@ -420,6 +420,7 @@ function hasActiveStage() {
 }
 
 function showHome() {
+    document.body.classList.remove('stage-view');
     homeSection.classList.remove('hidden');
     closeSettings();
     closeWinnersModal();
@@ -1300,6 +1301,7 @@ function loadTheme() { const savedTheme = localStorage.getItem('lotteryTheme') |
 function updateStatus(message, isError = false) { statusMessage.textContent = message; statusMessage.style.color = isError ? 'var(--danger-color)' : 'var(--accent-color)'; }
 
 function switchToLotteryView() {
+    document.body.classList.add('stage-view');
     homeSection.classList.add('hidden');
     closeSettings();
     closeWinnersModal();
@@ -1317,6 +1319,7 @@ function switchToLotteryView() {
         participantLabel.textContent = '剩餘摸彩人數';
     }
     updateParticipantCount(); updatePrizeDisplay(); saveSession();
+    requestAnimationFrame(fitWinnerNames);
 }
 
 function adjustPrizeNameFontSize() {
@@ -1422,7 +1425,7 @@ function handleRedraw(prizeIndex, winnerIndex) {
 function updateWinnersList(forceSort = false) {
     const isSimpleMode = simpleDrawToggle.checked;
     const hasAnyWinners = prizes.some(p => p.winners.length > 0);
-    const allPrizesDrawn = prizes.every(p => p.winners.length >= p.quantity);
+    document.getElementById('winners-list-title').textContent = '🍀 幸運兒名單';
     
     // Toggle Sort Button Visibility
     const isSortEnabled = sortWinnersToggle.checked;
@@ -1438,25 +1441,38 @@ function updateWinnersList(forceSort = false) {
     
     const createWinnerTag = (winner, prizeIndex, winnerIndex) => {
         const winnerTagContainer = document.createElement('div');
-        winnerTagContainer.className = 'winner-tag px-2 py-1 rounded-md flex items-center justify-between';
-        const winnerNameSpan = document.createElement('button');
-        winnerNameSpan.type = 'button';
+        winnerTagContainer.className = 'winner-tag';
+        const winnerNameSpan = document.createElement('span');
         winnerNameSpan.textContent = winner.name;
-        winnerNameSpan.className = 'winner-name-button';
-        winnerNameSpan.title = '切換領獎狀態';
-        winnerNameSpan.addEventListener('click', () => {
-            winner.claimed = !winner.claimed;
-            winnerTagContainer.classList.toggle('claimed', winner.claimed);
-            saveSession();
-        });
-        if (winner.claimed) { winnerTagContainer.classList.add('claimed'); }
+        winnerNameSpan.dataset.fullName = winner.name;
+        winnerNameSpan.className = 'winner-name';
+        winnerNameSpan.title = winner.name;
+        winnerTagContainer.classList.toggle('claimed', Boolean(winner.claimed));
         winnerTagContainer.appendChild(winnerNameSpan);
 
-        // 新增：捐出按鈕（🎁），不論是否領取都可捐出
+        const claimBtn = document.createElement('button');
+        claimBtn.type = 'button';
+        claimBtn.className = 'claim-stamp';
+        const updateClaimButton = () => {
+            claimBtn.textContent = winner.claimed ? '已領取' : '待領取';
+            claimBtn.setAttribute('aria-label', `${winner.claimed ? '取消' : '標記'}「${winner.name}」${winner.claimed ? '的領取標記' : '為已領取'}`);
+            claimBtn.setAttribute('aria-pressed', String(Boolean(winner.claimed)));
+        };
+        updateClaimButton();
+        claimBtn.addEventListener('click', () => {
+            winner.claimed = !winner.claimed;
+            winnerTagContainer.classList.toggle('claimed', winner.claimed);
+            updateClaimButton();
+            saveSession();
+        });
+        winnerTagContainer.appendChild(claimBtn);
+
         const donateBtn = document.createElement('button');
+        donateBtn.type = 'button';
         donateBtn.className = 'donate-btn';
-        donateBtn.innerHTML = '🎁';
+        donateBtn.textContent = '🎁';
         donateBtn.title = '捐出獎項（重新抽獎）';
+        donateBtn.setAttribute('aria-label', `捐出「${winner.name}」的獎項並重新抽獎`);
         donateBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (confirm(`確定要將「${winner.name}」的獎項捐出並重新抽獎嗎？`)) {
@@ -1469,13 +1485,11 @@ function updateWinnersList(forceSort = false) {
     };
 
     if (isSimpleMode) {
-        document.getElementById('winners-list-title').textContent = '已抽出名單';
         const winnerNames = document.createElement('div');
         winnerNames.className = 'grid grid-cols-2 gap-x-4 gap-y-2 mt-2 text-base';
         prizes[0].winners.forEach((winner, index) => { winnerNames.appendChild(createWinnerTag(winner, 0, index)); });
         winnersList.appendChild(winnerNames);
     } else {
-        document.getElementById('winners-list-title').textContent = '🏆 得獎榮譽榜';
         prizes.forEach((prize, prizeIndex) => {
             if (prize.winners.length > 0) {
                 const prizeContainer = document.createElement('div');
@@ -1483,39 +1497,19 @@ function updateWinnersList(forceSort = false) {
                 const winnerNames = document.createElement('div');
                 winnerNames.className = 'grid grid-cols-2 gap-x-4 gap-y-2 mt-2 text-base';
                 
-                let displayWinners = prize.winners.map((w, idx) => ({ ...w, originalIndex: idx }));
+                const displayWinners = prize.winners.map((winner, index) => ({ winner, index }));
                 
-                // Sorting Logic: Only sort if enabled and (forced or triggered by auto-update context)
                 if (isSortEnabled && (forceSort === true)) {
                      displayWinners.sort((a, b) => {
-                        if (a.claimed === b.claimed) {
-                            return a.originalIndex - b.originalIndex; // Keep original order if status same
+                        if (a.winner.claimed === b.winner.claimed) {
+                            return a.index - b.index;
                         }
-                        return a.claimed ? 1 : -1; // Unclaimed (false) comes first
+                        return a.winner.claimed ? 1 : -1;
                     });
                 }
 
-                displayWinners.forEach((winner) => { 
-                    // Pass original index for redraw logic to work correctly
-                    // Fix: Update the REAL data source using originalIndex, not the temporary display copy
-                    const winnerTag = createWinnerTag(winner, prizeIndex, winner.originalIndex);
-                    
-                    // Override the name button listener to update the correct data reference
-                    const nameButton = winnerTag.querySelector('.winner-name-button');
-                    // Remove old listener by cloning node (cleanest way without named function)
-                    const newNameButton = nameButton.cloneNode(true);
-                    winnerTag.replaceChild(newNameButton, nameButton);
-                    
-                    newNameButton.addEventListener('click', () => {
-                        // Access the ORIGINAL data source
-                        const actualWinner = prizes[prizeIndex].winners[winner.originalIndex];
-                        actualWinner.claimed = !actualWinner.claimed;
-                        
-                        winnerTag.classList.toggle('claimed', actualWinner.claimed);
-                        saveSession();
-                    });
-
-                    winnerNames.appendChild(winnerTag); 
+                displayWinners.forEach(({ winner, index }) => {
+                    winnerNames.appendChild(createWinnerTag(winner, prizeIndex, index));
                 });
                 
                 prizeContainer.appendChild(winnerNames);
@@ -1523,6 +1517,31 @@ function updateWinnersList(forceSort = false) {
             }
         });
     }
+    requestAnimationFrame(fitWinnerNames);
+}
+
+function fitWinnerNames() {
+    const names = winnersList.querySelectorAll('.winner-name');
+    if (!names.length) return;
+    const context = document.createElement('canvas').getContext('2d');
+    names.forEach(name => {
+        const fullName = name.dataset.fullName;
+        if (!fullName || !name.clientWidth) return;
+        context.font = getComputedStyle(name).font;
+        if (context.measureText(fullName).width <= name.clientWidth) {
+            name.textContent = fullName;
+            return;
+        }
+        const characters = Array.from(fullName);
+        let left = 0;
+        let right = characters.length;
+        while (left < right) {
+            const middle = Math.ceil((left + right) / 2);
+            if (context.measureText(characters.slice(0, middle).join('') + '....').width <= name.clientWidth) left = middle;
+            else right = middle - 1;
+        }
+        name.textContent = characters.slice(0, left).join('') + '....';
+    });
 }
 
 function exportResultsToCsv() {

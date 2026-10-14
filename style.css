@@ -265,24 +265,24 @@ input:checked + .toggle-switch-bg { background-color: var(--primary-color); }
 .stage-center { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 16px; min-height: 310px; padding: 34px 20px; background: radial-gradient(circle at 50% 65%, rgba(241,205,222,.3), transparent 54%); }
 .winner-display { display: flex; align-items: center; justify-content: center; width: min(100%, 720px); min-height: 260px; padding: 32px; border: 2px solid var(--winner-border-color); border-radius: 20px; background: var(--card-bg); box-shadow: 0 24px 40px rgba(42, 25, 32, .15); color: var(--text-color); font-size: clamp(38px, 5vw, 68px); font-weight: 900; text-align: center; line-height: 1.2; overflow-wrap: anywhere; }
 .stage-helper { margin: 0; padding: 7px 14px; border: 1px solid var(--border-color); border-radius: 99px; background: var(--secondary-color); color: var(--accent-color); font-size: 12px; font-weight: 800; text-align: center; }
-.stage-actions { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2.5fr); align-items: center; gap: 18px; min-height: 112px; padding: 22px 28px; border-top: 1px solid var(--border-color); background: var(--card-bg); }
-.stage-secondary { min-height: 48px; padding: 7px 14px; border-radius: 12px; font-weight: 800; }
-.stage-primary { min-height: 74px; padding: 12px 20px; border: 3px solid rgba(255,255,255,.55); border-radius: 999px; font-size: clamp(19px, 2vw, 27px); font-weight: 900; letter-spacing: .02em; }
+.stage-actions { display: flex; align-items: center; justify-content: center; min-height: 92px; padding: 12px 28px; border-top: 1px solid var(--border-color); background: var(--card-bg); }
+.stage-primary { width: max-content; min-height: 64px; padding: 10px 28px; border: 3px solid rgba(255,255,255,.55); border-radius: 999px; font-size: clamp(19px, 2vw, 27px); font-weight: 900; letter-spacing: .02em; }
 .winners-panel { grid-column: 2; grid-row: 2 / 4; display: flex; flex-direction: column; min-width: 0; min-height: 0; border: 1px solid var(--border-color); border-radius: 17px; background: var(--card-bg); overflow: hidden; box-shadow: 0 5px 12px rgba(75,31,51,.05); }
 .winners-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 78px; padding: 17px 20px; border-bottom: 1px solid var(--border-color); background: var(--secondary-color); }
 .winners-heading h3 { margin: 3px 0 0; font-size: 21px; font-weight: 900; }
 .sort-button { flex: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; }
-.winners-list { flex: 1; min-height: 260px; max-height: 695px; padding: 18px; overflow-y: auto; }
+.winners-list { flex: 1; min-height: 0; padding: 14px; overflow-y: auto; }
 .empty-winners { margin: 30px 0; color: var(--text-muted-color); font-size: 14px; text-align: center; }
 .winners-list > div + div { margin-top: 22px; }
 .winners-list h4 { margin: 0 0 8px; color: var(--accent-color); font-size: 14px; text-align: left; }
-.winners-list .grid { display: flex; flex-direction: column; gap: 9px; margin-top: 0; }
-.winner-tag { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 13px; background: var(--tag-bg); font-size: 14px; text-align: left; }
-.winner-name-button { flex: 1; min-width: 0; min-height: 40px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; white-space: normal; overflow-wrap: anywhere; font-weight: 800; }
-.winner-name-button::after { display: block; margin-top: 3px; content: '點姓名標記已領獎'; color: var(--text-muted-color); font-size: 11px; font-weight: 400; }
+.winners-list .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 0; }
+.winner-tag { display: flex; align-items: center; gap: 5px; min-width: 0; min-height: 57px; padding: 7px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--tag-bg); font-size: 13px; text-align: left; }
+.winner-name { display: block; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: 800; }
 .winner-tag.claimed { background: var(--claimed-bg); color: var(--claimed-text); }
-.winner-tag.claimed .winner-name-button::after { content: '已領取'; color: var(--claimed-text); }
-.donate-btn { flex: none; min-width: 40px; min-height: 40px; border: 1px solid var(--border-color); border-radius: 9px; background: var(--card-bg); color: var(--accent-color); font-size: 16px; }
+.claim-stamp { flex: none; min-width: 49px; min-height: 36px; padding: 3px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--card-bg); color: var(--text-muted-color); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.winner-tag.claimed .claim-stamp { border: 3px double var(--claimed-text); border-radius: 5px; background: transparent; color: var(--claimed-text); transform: rotate(-9deg); animation: stamp-in .2s ease-out; }
+@keyframes stamp-in { from { opacity: .2; transform: scale(1.4) rotate(-9deg); } to { opacity: 1; transform: scale(1) rotate(-9deg); } }
+.donate-btn { flex: none; min-width: 34px; min-height: 36px; border: 1px solid var(--border-color); border-radius: 9px; background: var(--card-bg); color: var(--accent-color); font-size: 15px; }
 .donate-btn:hover { background: var(--secondary-hover-color); }
 .winners-footer { padding: 17px 20px; border-top: 1px solid var(--border-color); background: var(--secondary-color); }
 .winners-summary { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 800; }
@@ -298,6 +298,19 @@ input:checked + .toggle-switch-bg { background-color: var(--primary-color); }
 
 .app-footer { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; min-height: 45px; padding: 12px 20px; border-top: 1px solid var(--border-color); background: var(--footer-bg); color: var(--text-muted-color); font-size: 11px; text-align: center; }
 .app-footer a { color: var(--accent-color); font-weight: 800; }
+
+@media (min-width: 1101px) {
+    body.stage-view .app-shell { display: flex; flex-direction: column; height: calc(100dvh - 45px); padding-bottom: 12px; }
+    body.stage-view .app-header { flex: none; }
+    body.stage-view .lottery-layout { flex: 1; min-height: 0; grid-template-rows: 54px 116px minmax(0, 1fr); gap: 12px; }
+    body.stage-view .metric-card { min-height: 0; padding: 15px 18px; }
+    body.stage-view .stage-panel { min-height: 0; }
+    body.stage-view .stage-banner { flex: none; min-height: 125px; padding: 17px 20px; }
+    body.stage-view .stage-center { min-height: 0; padding: 14px 20px; }
+    body.stage-view .winner-display { min-height: 0; max-height: 225px; height: 100%; padding: 20px; }
+    body.stage-view .stage-actions { flex: none; min-height: 82px; padding: 9px 20px; }
+    body.stage-view .winners-footer { flex: none; max-height: 35%; overflow-y: auto; }
+}
 
 /* Existing dialogs and draw effects */
 .duplicate-item { display: flex; justify-content: space-between; gap: 10px; padding: 8px; border-bottom: 1px solid var(--border-color); }
@@ -315,8 +328,11 @@ input:checked + .toggle-switch-bg { background-color: var(--primary-color); }
     .home-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .lottery-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
     .live-status-bar, .metrics-row, .stage-panel, .winners-panel { grid-column: 1; grid-row: auto; }
-    .winners-panel { min-height: 300px; }
-    .winners-list { max-height: 420px; }
+    .winners-panel { min-height: 300px; max-height: calc(100dvh - 100px); }
+    .winners-list { max-height: 420px; min-height: 150px; }
+    .winners-footer { flex: none; max-height: 35%; overflow-y: auto; }
+    body.stage-view .app-shell { padding-bottom: 100px; }
+    body.stage-view .stage-actions { position: fixed; z-index: 25; right: 0; bottom: 0; left: 0; min-height: 78px; box-shadow: 0 -8px 24px rgba(83, 39, 55, .13); }
 }
 @media (max-width: 800px) {
     .setup-layout { grid-template-columns: 1fr; }
@@ -395,9 +411,9 @@ input:checked + .toggle-switch-bg { background-color: var(--primary-color); }
     .stage-banner h3 { max-width: 96%; font-size: 24px; }
     .stage-center { min-height: 270px; padding: 18px 13px; }
     .winner-display { min-height: 220px; padding: 18px; font-size: 40px; }
-    .stage-actions { grid-template-columns: 1fr; gap: 9px; padding: 13px; }
-    .stage-primary { grid-row: 1; min-height: 58px; font-size: 21px; }
-    .stage-secondary { min-height: 44px; }
+    .stage-actions { padding: 13px; }
+    .stage-primary { min-height: 58px; font-size: 21px; }
+    .claim-stamp, .donate-btn { min-height: 42px; }
     .winners-heading h3 { font-size: 19px; }
 }
 @media (prefers-reduced-motion: reduce) {
