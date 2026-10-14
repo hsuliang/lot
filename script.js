@@ -18,9 +18,10 @@ const winnersModal = document.getElementById('winners-modal');
 const winnersModalList = document.getElementById('winners-modal-list');
 const downloadWinnersBtn = document.getElementById('download-winners-btn');
 const enterStageBtn = document.getElementById('enter-stage-btn');
-const replaceHeroBtn = document.getElementById('replace-hero-btn');
 const homeStatusText = document.getElementById('home-status-text');
 const homeStatusIcon = document.getElementById('home-status-icon');
+const summaryPrizesBtn = document.getElementById('summary-prizes-btn');
+const summaryPrizeTooltip = document.getElementById('summary-prize-tooltip');
 const summaryPrizeCount = document.getElementById('summary-prize-count');
 const summaryRosterCount = document.getElementById('summary-roster-count');
 const summaryReadyText = document.getElementById('summary-ready-text');
@@ -71,6 +72,9 @@ const tabContentExclude = document.getElementById('tab-content-exclude');
 
 // Title Tab Elements
 const titleInput = document.getElementById('title-input');
+const envTitleInput = document.getElementById('env-event-title-input');
+const saveEventTitleBtn = document.getElementById('save-event-title-btn');
+const eventTitleSaveStatus = document.getElementById('event-title-save-status');
 const titleTemplateNameInput = document.getElementById('title-template-name-input');
 const saveTitleTemplateBtn = document.getElementById('save-title-template-btn');
 const titleTemplateButtonsContainer = document.getElementById('title-template-buttons-container');
@@ -170,7 +174,10 @@ function init() {
     document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
     settingsDoneBtn.addEventListener('click', () => {
         if (settingsBody.dataset.category === 'list') handleLoadData();
-        else closeSettings();
+        else {
+            if (settingsBody.dataset.category === 'env') saveEnvironmentTitle();
+            closeSettings();
+        }
     });
     document.getElementById('close-winners-btn').addEventListener('click', closeWinnersModal);
     downloadWinnersBtn.addEventListener('click', () => {
@@ -186,8 +193,7 @@ function init() {
         openBonusModal();
     });
     enterStageBtn.addEventListener('click', enterStage);
-    replaceHeroBtn.addEventListener('click', () => bgUpload.click());
-    document.getElementById('summary-prizes-btn').addEventListener('click', () => showSettings('prize'));
+    summaryPrizesBtn.addEventListener('click', () => showSettings('prize'));
     document.getElementById('summary-roster-btn').addEventListener('click', () => showSettings('list'));
     document.getElementById('summary-rounds-btn').addEventListener('click', () => showSettings('prize'));
     eventTitlePill.addEventListener('click', () => toggleTitlePopover());
@@ -243,6 +249,8 @@ function init() {
     titleInput.addEventListener('input', (e) => {
         setEventTitle(e.target.value.trim() || '祝您中大獎');
     });
+    envTitleInput.addEventListener('input', () => { eventTitleSaveStatus.textContent = ''; });
+    saveEventTitleBtn.addEventListener('click', saveEnvironmentTitle);
     saveTitleTemplateBtn.addEventListener('click', saveTitleTemplate);
 
     // Prize Setup
@@ -400,9 +408,15 @@ function setEventTitle(value) {
     const title = value || '祝您中大獎';
     eventTitleText.textContent = title;
     if (document.activeElement !== titleInput) titleInput.value = title;
+    if (document.activeElement !== envTitleInput) envTitleInput.value = title;
     mainTitle.textContent = 'ㄚ亮笑長的摸彩助手';
     document.title = 'ㄚ亮笑長的摸彩助手';
     localStorage.setItem('lotteryEventTitle', title);
+}
+
+function saveEnvironmentTitle() {
+    setEventTitle(envTitleInput.value.trim() || '祝您中大獎');
+    eventTitleSaveStatus.textContent = '活動標題已儲存';
 }
 
 function toggleTitlePopover(open = eventTitlePopover.classList.contains('hidden')) {
@@ -487,19 +501,38 @@ function enterStage() {
 }
 
 function updateHomeSummary() {
-    const configured = Array.from(prizesContainer.querySelectorAll('.prize-row')).filter(row =>
-        row.querySelector('.prize-name').value.trim() && Number(row.querySelector('.prize-quantity').value) > 0
-    ).length;
-    const count = prizes.length || configured;
+    const configuredPrizes = Array.from(prizesContainer.querySelectorAll('.prize-row')).map(row => ({
+        name: row.querySelector('.prize-name').value.trim(),
+        quantity: Number(row.querySelector('.prize-quantity').value)
+    })).filter(prize => prize.name && prize.quantity > 0);
+    const visiblePrizes = prizes.length ? prizes : configuredPrizes;
+    const count = visiblePrizes.length;
     summaryPrizeCount.textContent = count;
     summaryRoundCount.textContent = count;
+    summaryPrizeTooltip.replaceChildren();
+    const tooltipHeading = document.createElement('strong');
+    tooltipHeading.textContent = count ? '目前獎品與數量' : '尚未設定獎品';
+    summaryPrizeTooltip.appendChild(tooltipHeading);
+    visiblePrizes.forEach(prize => {
+        const row = document.createElement('span');
+        row.className = 'prize-tooltip-row';
+        const name = document.createElement('span');
+        name.textContent = prize.name;
+        const quantity = document.createElement('span');
+        quantity.textContent = `${prize.quantity} 份`;
+        row.append(name, quantity);
+        summaryPrizeTooltip.appendChild(row);
+    });
+    summaryPrizesBtn.setAttribute('aria-label', count
+        ? `獎項配置庫存：${visiblePrizes.map(prize => `${prize.name} ${prize.quantity} 份`).join('、')}`
+        : '獎項配置庫存：尚未設定獎品');
     const winnerCount = prizes.reduce((total, prize) => total + (prize.winners?.length || 0), 0);
-    summaryRosterCount.textContent = participants.length + winnerCount;
-    const rosterLoaded = participants.length > 0;
+    const rosterCount = participants.length + winnerCount;
+    summaryRosterCount.textContent = rosterCount;
+    const rosterLoaded = rosterCount > 0;
     const ready = rosterLoaded && (simpleDrawToggle.checked || count > 0);
     summaryReadyText.textContent = ready ? '已就緒' : rosterLoaded ? '待設定獎項' : '待載入名單';
-    homeStatusText.textContent = ready ? '投影準備就緒・名單已載入'
-        : rosterLoaded ? '名單已載入・請設定獎項' : '請先載入摸彩名單';
+    homeStatusText.textContent = rosterLoaded ? `名單已載入：${rosterCount} 位` : '尚未載入名單';
     homeStatusIcon.textContent = rosterLoaded ? '✓' : '✦';
 }
 

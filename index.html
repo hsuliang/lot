@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <link rel="icon" type="image/png" href="Logo.png">
-    <link rel="stylesheet" href="style.css?v=20261014-5">
+    <link rel="stylesheet" href="style.css?v=20261014-6">
 </head>
 
 <body class="app-body">
@@ -62,21 +62,19 @@
     <section id="home-section" class="home-section">
         <div class="home-hero">
             <div class="home-hero-toolbar">
-                <div class="home-status"><span id="home-status-icon" class="status-icon">✦</span><strong>活動企劃主視覺展示區</strong><span id="home-status-text" class="status-chip">請先載入摸彩名單</span></div>
-                <button id="replace-hero-btn" class="replace-hero-button" type="button">▧ 更換活動主視覺企劃圖</button>
+                <div class="home-status" role="status"><span id="home-status-icon" class="status-icon">✦</span><strong id="home-status-text">尚未載入名單</strong></div>
             </div>
             <div id="hero-visual" class="hero-visual">
                 <div class="hero-visual-content">
-                    <span class="hero-kicker">🏮 年度盛典・幸運摸彩即將開獎 ✨</span>
+                    <span class="hero-kicker">🏮 歡樂時光・幸運摸彩即將開獎 ✨</span>
                     <h2>今晚，好運由你揭曉</h2>
                     <p>點亮幸運瞬間，歡樂好禮即刻降臨。準備好把大獎帶回家！</p>
                     <button id="enter-stage-btn" class="btn-primary enter-stage-button" type="button">🚀 進入摸彩現場 <span>SPACE</span></button>
-                    <p class="hero-helper">♧ 主控台提示：可按空白鍵快速進入；支援外接投影延伸螢幕。</p>
                 </div>
             </div>
         </div>
         <div class="home-summary" aria-label="活動準備狀態">
-            <button id="summary-prizes-btn" class="summary-card" type="button"><span class="summary-icon gold">♔</span><span>獎項配置庫存<strong>已準備：<em id="summary-prize-count">0</em> 項</strong></span></button>
+            <div class="summary-prize-wrap"><button id="summary-prizes-btn" class="summary-card" type="button"><span class="summary-icon gold">♔</span><span>獎項配置庫存<strong>已準備：<em id="summary-prize-count">0</em> 項</strong></span></button><div id="summary-prize-tooltip" class="summary-prize-tooltip" aria-hidden="true"></div></div>
             <button id="summary-roster-btn" class="summary-card" type="button"><span class="summary-icon pink">♧</span><span>摸彩名冊同步<strong>資格名額：<em id="summary-roster-count">0</em> 位</strong></span></button>
             <div class="summary-card"><span class="summary-icon purple">✦</span><span>現場視聽就緒度<strong id="summary-ready-text">準備設定</strong></span></div>
             <button id="summary-rounds-btn" class="summary-card" type="button"><span class="summary-icon gold">☷</span><span>檢視摸彩輪次<strong><em id="summary-round-count">0</em> 個階段序盤</strong></span></button>
@@ -101,6 +99,15 @@
         </div>
 
         <div id="env-settings-card" class="card p-8 rounded-lg">
+            <div class="env-title-field">
+                <label for="env-event-title-input">活動標題</label>
+                <div class="env-title-controls">
+                    <input id="env-event-title-input" class="form-input" type="text" maxlength="30" placeholder="祝您中大獎">
+                    <button id="save-event-title-btn" class="btn-secondary" type="button">儲存標題</button>
+                </div>
+                <small>儲存後顯示於「ㄚ亮笑長的摸彩助手」旁的標題藥丸。</small>
+                <span id="event-title-save-status" role="status"></span>
+            </div>
             <div class="border-b" style="border-color: var(--input-border-color);">
                 <nav class="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
                     <button id="tab-mode"
@@ -419,11 +426,10 @@
             </div>
             <div class="stage-center">
                 <div id="winner-display" class="winner-display" role="status" aria-live="polite">準備開始！</div>
-                <p class="stage-helper">✦　按下方按鈕，揭曉幸運得主</p>
             </div>
-            <div class="stage-actions">
-                <button id="draw-button" class="btn-primary stage-primary" type="button">開始摸彩</button>
-            </div>
+        </div>
+        <div class="stage-actions">
+            <button id="draw-button" class="btn-primary stage-primary" type="button">開始摸彩</button>
         </div>
 
         <aside id="winners-list-container" class="winners-panel">
@@ -544,7 +550,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20261014-5"></script>
+    <script src="script.js?v=20261014-6"></script>
 </body>
 
 </html>
