@@ -390,39 +390,27 @@
 
     <section id="lottery-section" class="lottery-layout hidden">
         <div class="live-status-bar">
-            <div class="live-status-copy"><span class="live-dot"></span><strong>現場摸彩進行中</strong><span>名單已載入，準備揭曉今晚的幸運得主</span></div>
-            <span class="stage-pill">✦ 現場焦點舞台</span>
-        </div>
-
-        <div class="metrics-row">
-            <div class="metric-card">
-                <span id="participant-label" class="metric-label">剩餘摸彩人數</span>
-                <div class="metric-value"><span id="participant-count">0</span><small>人可抽</small></div>
-                <span class="metric-icon" aria-hidden="true">♧</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">本次抽取名額</span>
-                <div id="batch-settings" class="batch-control hidden">
-                    <label for="batch-size-input" class="sr-only">本次抽出人數</label>
-                    <input type="number" id="batch-size-input" class="form-input" value="1" min="1" max="100">
-                    <small>若獎項名額不足，系統會自動調整</small>
+            <div class="live-status-copy"><span class="live-dot"></span><strong>現場摸彩進行中</strong></div>
+            <div class="live-status-stats">
+                <div class="live-stat">
+                    <span id="participant-label">剩餘摸彩人數</span>
+                    <strong><span id="participant-count">0</span> 人可抽</strong>
                 </div>
-                <div id="single-draw-count" class="metric-value"><span>1</span><small>人</small></div>
-                <span class="metric-icon" aria-hidden="true">✣</span>
-            </div>
-            <div class="metric-card prize-metric">
-                <span class="metric-label">當前抽取輪次</span>
-                <strong id="current-prize-short">準備開獎</strong>
-                <span id="current-prize-progress">等待開始</span>
-                <span class="metric-icon" aria-hidden="true">🏆</span>
+                <div class="live-stat">
+                    <span>本次抽取名額</span>
+                    <div id="batch-settings" class="batch-control hidden">
+                        <label for="batch-size-input" class="sr-only">本次抽出人數</label>
+                        <input type="number" id="batch-size-input" class="form-input" value="1" min="1" max="100">
+                        <small>若獎項名額不足，系統會自動調整</small>
+                    </div>
+                    <strong id="single-draw-count">1 人</strong>
+                </div>
             </div>
         </div>
 
         <div id="main-draw-panel" class="stage-panel">
             <div class="stage-banner">
-                <span class="live-badge"><span></span> LIVE 現場大螢幕同步開獎</span>
                 <h3 id="current-prize-display">準備開獎</h3>
-                <p>每一份幸運，都值得全場一起見證</p>
             </div>
             <div class="stage-center">
                 <div id="winner-display" class="winner-display" role="status" aria-live="polite">準備開始！</div>

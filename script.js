@@ -53,8 +53,6 @@ const participantCountSpan = document.getElementById('participant-count');
 const currentPrizeDisplay = document.getElementById('current-prize-display');
 const winnerDisplay = document.getElementById('winner-display');
 const winnersList = document.getElementById('winners-list');
-const currentPrizeShort = document.getElementById('current-prize-short');
-const currentPrizeProgress = document.getElementById('current-prize-progress');
 const awardedProgress = document.getElementById('awarded-progress');
 const prizeProgressList = document.getElementById('prize-progress-list');
 const singleDrawCount = document.getElementById('single-draw-count');
@@ -175,7 +173,15 @@ function init() {
     settingsDoneBtn.addEventListener('click', () => {
         if (settingsBody.dataset.category === 'list') handleLoadData();
         else {
+            if (settingsBody.dataset.category === 'prize' && !readAndValidatePrizes()) return;
             if (settingsBody.dataset.category === 'env') saveEnvironmentTitle();
+            if (settingsBody.dataset.category === 'prize') {
+                updateHomeSummary();
+                updateDashboardStats();
+                updateWinnersList(true);
+                if (!lotterySection.classList.contains('hidden')) updatePrizeDisplay();
+                if (participants.length) saveSession();
+            }
             closeSettings();
         }
     });
@@ -555,6 +561,9 @@ function handleAddBonusPrize() {
 
     const newPrize = { name, quantity, winners: [] };
     prizes.push(newPrize);
+    addPrizeRow(name, quantity);
+    currentPrizeIndex = prizes.findIndex(prize => prize.winners.length < prize.quantity);
+    updateHomeSummary();
     
     // Check if we need to reset the completed state
     // If the button says "Reset" or "Finished", we need to wake it up
@@ -692,6 +701,10 @@ function loadSession() {
         participants = data.participants;
         prizes = data.prizes;
         currentPrizeIndex = data.currentPrizeIndex;
+        if (prizes.length && !data.simpleDrawMode) {
+            prizesContainer.replaceChildren();
+            prizes.forEach(prize => addPrizeRow(prize.name, prize.quantity));
+        }
         simpleDrawToggle.checked = data.simpleDrawMode;
         batchDrawToggle.checked = data.batchDrawEnabled || false;
         batchSettingsContainer.classList.toggle('hidden', !batchDrawToggle.checked);
@@ -830,7 +843,7 @@ function switchTab(tabName) {
 }
 function switchEnvTab(tabName) { const tabs = { mode: { btn: tabModeBtn, content: tabContentMode }, prize: { btn: tabPrizeBtn, content: tabContentPrize }, theme: { btn: tabThemeBtn, content: tabContentTheme }, visual: { btn: tabVisualBtn, content: tabContentVisual }, effect: { btn: tabEffectBtn, content: tabContentEffect } }; Object.values(tabs).forEach(tab => { tab.btn.classList.remove('active'); tab.content.classList.add('hidden'); }); tabs[tabName].btn.classList.add('active'); tabs[tabName].content.classList.remove('hidden'); }
 function handleSimpleDrawToggle(e) { const isEnabled = e.target.checked; tabPrizeBtn.classList.toggle('hidden', isEnabled); settingsCategoryButtons.prize.classList.toggle('hidden', isEnabled); if (isEnabled && settingsBody.dataset.category === 'prize') selectSettingsCategory('env'); localStorage.setItem('simpleDrawMode', isEnabled); }
-function addPrizeRow(name = '', quantity = 1) { const row = document.createElement('div'); row.className = 'prize-row flex items-center gap-2'; row.innerHTML = ` <input type="text" class="prize-name form-input w-full p-2 rounded" value="${name}" placeholder="獎項名稱"> <input type="number" class="prize-quantity form-input w-24 p-2 rounded" value="${quantity}" min="1" placeholder="數量"> <button class="remove-prize-btn btn-secondary px-3 py-2 rounded" style="color: var(--danger-color);">✕</button> `; prizesContainer.appendChild(row); row.querySelector('.remove-prize-btn').addEventListener('click', () => { row.remove(); updateHomeSummary(); }); updateHomeSummary(); }
+function addPrizeRow(name = '', quantity = 1) { const row = document.createElement('div'); row.className = 'prize-row flex items-center gap-2'; row.innerHTML = ' <input type="text" class="prize-name form-input w-full p-2 rounded" placeholder="獎項名稱"> <input type="number" class="prize-quantity form-input w-24 p-2 rounded" min="1" placeholder="數量"> <button class="remove-prize-btn btn-secondary px-3 py-2 rounded" style="color: var(--danger-color);">✕</button> '; row.querySelector('.prize-name').value = name; row.querySelector('.prize-quantity').value = quantity; prizesContainer.appendChild(row); row.querySelector('.remove-prize-btn').addEventListener('click', () => { row.remove(); updateHomeSummary(); }); updateHomeSummary(); }
 const clearPrizes = () => { prizesContainer.innerHTML = ''; updateHomeSummary(); };
 function setColumnChoice(select, customInput, column) {
     const letter = column.trim().toUpperCase();
@@ -850,7 +863,40 @@ function selectedColumn(select, customInput) {
 }
 
 function handleUrlParams() { const params = new URLSearchParams(window.location.search); if (params.has('sheetUrl') && params.has('sheetName') && params.has('column')) { sheetUrlInput.value = params.get('sheetUrl'); sheetNameInput.value = params.get('sheetName'); setColumnChoice(columnLetterInput, columnLetterCustomInput, params.get('column')); switchTab('cloud'); handleLoadData(); } }
-function readAndValidatePrizes() { prizes = []; const isSimpleMode = simpleDrawToggle.checked; if (isSimpleMode) { return true; } const prizeRows = prizesContainer.querySelectorAll('.prize-row'); if (prizeRows.length === 0) { return true; } let totalPrizeQuantity = 0; for (const row of prizeRows) { const name = row.querySelector('.prize-name').value.trim(); const quantity = parseInt(row.querySelector('.prize-quantity').value, 10); if (!name) { updateStatus('獎項名稱不可為空！', true); return false; } if (isNaN(quantity) || quantity < 1) { updateStatus(`獎項「${name}」的數量必須是正整數！`, true); return false; } prizes.push({ name, quantity, winners: [] }); totalPrizeQuantity += quantity; } if (participants.length > 0 && totalPrizeQuantity > participants.length) { updateStatus(`警告：獎項總數 (${totalPrizeQuantity}) 大於參與人數 (${participants.length})！`, true); } return true; }
+function readAndValidatePrizes() {
+    if (simpleDrawToggle.checked) return true;
+    const nextPrizes = [];
+    for (const row of prizesContainer.querySelectorAll('.prize-row')) {
+        const name = row.querySelector('.prize-name').value.trim();
+        const quantity = Number(row.querySelector('.prize-quantity').value);
+        if (!name) { updateStatus('獎項名稱不可為空！', true); return false; }
+        if (!Number.isInteger(quantity) || quantity < 1) { updateStatus(`獎項「${name}」的數量必須是正整數！`, true); return false; }
+        nextPrizes.push({ name, quantity, winners: [] });
+    }
+    const awardedPrizes = prizes.filter(prize => prize.winners.length);
+    if (awardedPrizes.length) {
+        if (new Set(nextPrizes.map(prize => prize.name)).size !== nextPrizes.length ||
+            new Set(prizes.map(prize => prize.name)).size !== prizes.length) {
+            updateStatus('已有得獎紀錄時，獎項名稱不可重複。', true);
+            return false;
+        }
+        for (const awardedPrize of awardedPrizes) {
+            const matchingPrize = nextPrizes.find(prize => prize.name === awardedPrize.name);
+            if (!matchingPrize || matchingPrize.quantity < awardedPrize.winners.length) {
+                updateStatus(`「${awardedPrize.name}」已有得獎者，不能刪除、更名或把數量減至已抽出人數以下。`, true);
+                return false;
+            }
+            matchingPrize.winners = awardedPrize.winners;
+        }
+    }
+    prizes = nextPrizes;
+    currentPrizeIndex = Math.max(0, prizes.findIndex(prize => prize.winners.length < prize.quantity));
+    const total = prizes.reduce((sum, prize) => sum + prize.quantity, 0);
+    const available = participants.length + prizes.reduce((sum, prize) => sum + prize.winners.length, 0);
+    if (available && total > available) updateStatus(`警告：獎項總數 (${total}) 大於參與人數 (${available})！`, true);
+    else updateStatus('獎項設定已更新。');
+    return true;
+}
 
 async function handleLoadData() {
     if (settingsDoneBtn.disabled) return;
@@ -1284,8 +1330,15 @@ function handleDrawWinner() {
                 winnerDisplay.textContent = winnersThisBatch[0];
                 winnerDisplay.style.fontSize = '';
             } else {
-                winnerDisplay.innerHTML = `<div class="text-2xl mb-2">恭喜得獎者：</div><div class="flex flex-wrap justify-center gap-2 text-xl">${winnersThisBatch.map(name => `<span class="px-3 py-1 rounded bg-white/20">${name}</span>`).join('')}</div>`;
-                winnerDisplay.style.fontSize = "1.5rem";
+                const names = document.createElement('div');
+                names.className = 'winner-batch-names';
+                winnersThisBatch.forEach(name => {
+                    const label = document.createElement('span');
+                    label.textContent = name;
+                    names.appendChild(label);
+                });
+                winnerDisplay.replaceChildren(names);
+                winnerDisplay.style.fontSize = '';
             }
 
             if (selectedEffect === 'spotlight') { winnerDisplay.classList.add('effect-spotlight'); } 
@@ -1381,7 +1434,7 @@ function updatePrizeDisplay() {
     if (isSimpleMode) { currentPrizeDisplay.textContent = '幸運的你'; } 
     else {
         const progress = `${currentPrize.winners.length} / ${currentPrize.quantity}`;
-        currentPrizeDisplay.textContent = `正在抽取: ${currentPrize.name} (${progress})`;
+        currentPrizeDisplay.textContent = `正在抽取：${currentPrize.name} (${progress})`;
     }
     if (currentPrize.winners.length >= currentPrize.quantity) {
         const nextPrize = prizes.find((p, index) => index > currentPrizeIndex && p.winners.length < p.quantity);
@@ -1402,9 +1455,6 @@ function updateParticipantCount() { participantCountSpan.textContent = participa
 function updateDashboardStats() {
     const awarded = prizes.reduce((sum, prize) => sum + prize.winners.length, 0);
     const total = prizes.reduce((sum, prize) => sum + prize.quantity, 0);
-    const activePrize = prizes.find(prize => prize.winners.length < prize.quantity);
-    currentPrizeShort.textContent = activePrize ? activePrize.name : (total ? '全部抽完' : '準備開獎');
-    currentPrizeProgress.textContent = activePrize ? `剩餘額度：${activePrize.quantity - activePrize.winners.length} / ${activePrize.quantity} 位` : (total ? '所有獎項已抽出' : '等待開始');
     awardedProgress.textContent = `${awarded} / ${total} 份`;
     prizeProgressList.replaceChildren();
     prizes.forEach(prize => {
@@ -1526,7 +1576,10 @@ function updateWinnersList(forceSort = false) {
         prizes.forEach((prize, prizeIndex) => {
             if (prize.winners.length > 0) {
                 const prizeContainer = document.createElement('div');
-                prizeContainer.innerHTML = `<h4 class="font-bold text-lg" style="color: var(--accent-color);">${prize.name} (${prize.winners.length}/${prize.quantity})</h4>`;
+                const prizeHeading = document.createElement('h4');
+                prizeHeading.className = 'font-bold text-lg';
+                prizeHeading.textContent = `${prize.name} (${prize.winners.length}/${prize.quantity})`;
+                prizeContainer.appendChild(prizeHeading);
                 const winnerNames = document.createElement('div');
                 winnerNames.className = 'grid grid-cols-2 gap-x-4 gap-y-2 mt-2 text-base';
                 
