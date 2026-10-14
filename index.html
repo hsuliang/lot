@@ -8,34 +8,41 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <link rel="icon" type="image/png" href="Logo.png">
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body class="pt-2 px-4 pb-16">
+<body class="app-body">
 
     <div id="app-bg-overlay"
         class="fixed inset-0 pointer-events-none bg-cover bg-center bg-no-repeat transition-opacity duration-500 opacity-0">
     </div>
 
-    <div class="w-full max-w-5xl mx-auto relative z-10">
-        <header class="text-center mt-2 mb-8"">
-            <div class=" relative flex flex-col md:flex-row items-center justify-center gap-2">
+    <div class="app-shell relative z-10">
+        <header class="app-header">
+            <div class="brand-lockup">
+                <img id="logo-img" src="Logo.png" alt="ㄚ亮笑長標誌" class="brand-logo" onerror="this.style.visibility='hidden';">
+                <div class="brand-copy">
+                    <span class="brand-eyebrow">LIVE EVENT STUDIO</span>
+                    <h1 id="main-title" class="izakaya-title">ㄚ亮笑長的摸彩助手</h1>
+                </div>
+            </div>
+            <div class="header-actions">
+                <span class="event-badge">✨ 尾牙春酒專用</span>
+                <button id="sound-toggle-btn" class="header-icon-button" aria-label="切換音效" title="切換音效">🔊</button>
+                <button id="fullscreen-btn" class="header-icon-button" aria-label="切換全螢幕" title="切換全螢幕">⛶</button>
+                <button id="reset-btn" class="header-reset-button hidden" title="結束活動並返回設定">↺ <span>重新設定</span></button>
+            </div>
+        </header>
 
-            <img id="logo-img" src="Logo.png" alt="Aliang Logo"
-                class="h-14 md:h-20 w-auto object-contain flex-shrink-0" onerror="this.style.visibility='hidden';">
-
-            <h1 id="main-title" class="text-5xl md:text-6xl font-bold izakaya-title">ㄚ亮笑長的摸彩助手</h1>
-
-            <button id="reset-btn"
-                class="absolute right-0 text-3xl p-2 rounded-full hidden hover:bg-white/10 transition-colors"
-                style="color: var(--text-muted-color);" title="重置並返回設定">⟲</button>
-    </div>
-    </header>
-
-    <section id="settings-section" class="space-y-6">
+    <section id="settings-section" class="setup-layout">
+        <div class="setup-intro">
+            <span class="section-kicker">活動準備</span>
+            <h2>打造今晚的幸運舞台</h2>
+            <p>設定活動、獎項與參與名單，載入後即可開始摸彩。</p>
+        </div>
 
         <div class="card p-8 rounded-lg">
             <h2 class="text-2xl font-bold mb-4" style="color: var(--accent-color);">環境設定</h2>
@@ -185,9 +192,7 @@
             <div id="tab-content-sound" class="hidden mt-6">
                 <div class="flex items-center justify-between">
                     <span class="font-semibold text-lg" style="color: var(--text-color);">點擊圖示以開啟或關閉音效</span>
-                    <button id="sound-toggle-btn"
-                        class="text-3xl p-2 rounded-full transition-colors duration-300 hover:bg-white/10"
-                        aria-label="切換音效">🔊</button>
+                    <span class="text-sm">可使用頁面右上角的音效按鈕切換。</span>
                 </div>
             </div>
 
@@ -348,59 +353,74 @@
                 class="w-full btn-primary py-3 rounded-lg text-xl font-bold shadow-lg">載入名單並開始</button>
         </div>
 
-        <p id="status-message" class="text-center mt-4 h-6" style="color: var(--accent-color);"></p>
+        <p id="status-message" class="text-center mt-4 h-6" role="status" aria-live="polite" style="color: var(--accent-color);"></p>
     </section>
 
-    <section id="lottery-section" class="hidden flex flex-col md:flex-row gap-6 items-start">
-        <div id="main-draw-panel" class="w-full md:w-full card p-8 rounded-lg">
-            <div class="flex flex-col sm:flex-row justify-end items-center mb-4 gap-2">
-                <p><span id="participant-label">剩餘摸彩人數</span>: <span id="participant-count" class="font-bold text-2xl"
-                        style="color: var(--accent-color);">0</span></p>
-            </div>
-            <h3 id="current-prize-display" class="text-3xl text-center mb-4 font-bold"
-                style="color: var(--accent-color);"></h3>
-            <div id="winner-display" class="winner-display rounded-lg p-4 mb-6 text-4xl md:text-6xl text-center">
-                準備開始！
-            </div>
+    <section id="lottery-section" class="lottery-layout hidden">
+        <div class="live-status-bar">
+            <div class="live-status-copy"><span class="live-dot"></span><strong>現場摸彩進行中</strong><span>名單已載入，準備揭曉今晚的幸運得主</span></div>
+            <span class="stage-pill">✦ 現場焦點舞台</span>
+        </div>
 
-            <div id="batch-settings" class="mb-6 flex flex-col items-center justify-center gap-2 hidden">
-                <div class="flex items-center gap-3">
-                    <label for="batch-size-input" class="font-semibold"
-                        style="color: var(--text-muted-color);">本次抽出人數:</label>
-                    <input type="number" id="batch-size-input"
-                        class="form-input w-20 text-center text-xl p-1 rounded-lg" value="1" min="1" max="100">
+        <div class="metrics-row">
+            <div class="metric-card">
+                <span id="participant-label" class="metric-label">剩餘摸彩人數</span>
+                <div class="metric-value"><span id="participant-count">0</span><small>人可抽</small></div>
+                <span class="metric-icon" aria-hidden="true">♧</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">本次抽取名額</span>
+                <div id="batch-settings" class="batch-control hidden">
+                    <label for="batch-size-input" class="sr-only">本次抽出人數</label>
+                    <input type="number" id="batch-size-input" class="form-input" value="1" min="1" max="100">
+                    <small>若獎項名額不足，系統會自動調整</small>
                 </div>
-                <p class="text-xs" style="color: var(--text-muted-color);">提示：若剩餘獎項不足，將自動調整數量</p>
+                <div id="single-draw-count" class="metric-value"><span>1</span><small>人</small></div>
+                <span class="metric-icon" aria-hidden="true">✣</span>
             </div>
-
-            <div class="flex gap-4">
-                <button id="draw-button"
-                    class="btn-primary w-full py-4 rounded-lg text-2xl font-bold shadow-xl">開始摸彩</button>
+            <div class="metric-card prize-metric">
+                <span class="metric-label">當前抽取輪次</span>
+                <strong id="current-prize-short">準備開獎</strong>
+                <span id="current-prize-progress">等待開始</span>
+                <span class="metric-icon" aria-hidden="true">🏆</span>
             </div>
         </div>
-        <div id="winners-list-container" class="w-full md:w-[30%] hidden">
-            <div class="card p-6 rounded-lg">
-                <div class="flex items-center justify-center gap-2 mb-4">
-                    <h3 id="winners-list-title" class="text-xl font-bold" style="color: var(--accent-color);">🎉 得獎名單 🎉
-                    </h3>
-                    <button id="sort-winners-btn"
-                        class="hidden text-sm px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors"
-                        title="整理名單（未領獎置頂）">⇅ 整理</button>
-                </div>
-                <div id="winners-list" class="space-y-4 text-center text-lg">
-                </div>
-                <button id="export-csv-btn"
-                    class="hidden mt-4 btn-secondary w-full py-3 rounded-lg text-xl font-bold">匯出得獎名單</button>
+
+        <div id="main-draw-panel" class="stage-panel">
+            <div class="stage-banner">
+                <span class="live-badge"><span></span> LIVE 現場大螢幕同步開獎</span>
+                <h3 id="current-prize-display">準備開獎</h3>
+                <p>每一份幸運，都值得全場一起見證</p>
+            </div>
+            <div class="stage-center">
+                <div id="winner-display" class="winner-display" role="status" aria-live="polite">準備開始！</div>
+                <p class="stage-helper">✦　按下方按鈕，揭曉幸運得主</p>
+            </div>
+            <div class="stage-actions">
+                <button id="bonus-open-btn" class="btn-secondary stage-secondary" type="button">🎁 老闆臨時加碼</button>
+                <button id="draw-button" class="btn-primary stage-primary" type="button">開始摸彩</button>
             </div>
         </div>
+
+        <aside id="winners-list-container" class="winners-panel">
+            <div class="winners-heading">
+                <div><span class="section-kicker">HALL OF FAME</span><h3 id="winners-list-title">🏆 得獎榮譽榜</h3></div>
+                <button id="sort-winners-btn" class="hidden btn-secondary sort-button" title="未領獎置頂">⇅ 整理</button>
+            </div>
+            <div id="winners-list" class="winners-list"><p class="empty-winners">幸運得主將在這裡登場</p></div>
+            <div class="winners-footer">
+                <div class="winners-summary"><span>獎項發放總進度</span><strong id="awarded-progress">0 / 0 份</strong></div>
+                <div id="prize-progress-list" class="prize-progress-list"></div>
+                <button id="export-csv-btn" class="hidden btn-secondary export-button">匯出得獎名單</button>
+            </div>
+        </aside>
     </section>
 
     </div>
     <audio id="rolling-sound" src="https://hsuliang.github.io/rool5.mp3" preload="auto" loop></audio>
     <audio id="winner-sound" src="https://hsuliang.github.io/happy.mp3" preload="auto"></audio>
 
-    <footer class="fixed bottom-0 left-0 right-0 p-3 text-center text-xs backdrop-blur-sm"
-        style="color: var(--text-muted-color); background-color: var(--footer-bg);">
+    <footer class="app-footer">
         <span>v3.0 丙午．春分</span> |
         <span>由 Google Gemini 強力驅動</span> |
         <a href="https://bit.ly/Alaing" target="_blank" rel="noopener noreferrer"

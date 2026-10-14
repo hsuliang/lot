@@ -23,9 +23,14 @@ const participantLabel = document.getElementById('participant-label');
 const participantCountSpan = document.getElementById('participant-count');
 const currentPrizeDisplay = document.getElementById('current-prize-display');
 const winnerDisplay = document.getElementById('winner-display');
-const winnersListContainer = document.getElementById('winners-list-container');
-const mainDrawPanel = document.getElementById('main-draw-panel');
 const winnersList = document.getElementById('winners-list');
+const currentPrizeShort = document.getElementById('current-prize-short');
+const currentPrizeProgress = document.getElementById('current-prize-progress');
+const awardedProgress = document.getElementById('awarded-progress');
+const prizeProgressList = document.getElementById('prize-progress-list');
+const singleDrawCount = document.getElementById('single-draw-count');
+const bonusOpenBtn = document.getElementById('bonus-open-btn');
+const fullscreenBtn = document.getElementById('fullscreen-btn');
 const soundToggleBtn = document.getElementById('sound-toggle-btn');
 const resetBtn = document.getElementById('reset-btn');
 const tabCloudBtn = document.getElementById('tab-cloud');
@@ -130,7 +135,6 @@ let rollingInterval = null;
 let activeDataSource = 'custom';
 let isSoundOn = true;
 const themes = [ { id: 'candy', name: '糖果王國', colors: ['#ff69b4', '#87ceeb'] }, { id: 'forest', name: '森林夥伴', colors: ['#228b22', '#ff7f50'] }, { id: 'izakaya', name: '居酒屋', colors: ['#e53e3e', '#ffab00'] }, { id: 'sakura', name: '櫻花', colors: ['#db2777', '#fdf2f8'] }, { id: 'midnight', name: '午夜', colors: ['#38bdf8', '#0f172a'] } ];
-const buttonPhrases = [ '獎落誰家？就是你家！', '帶回就是福氣', '抽中就是緣分', '好運滾滾來', '表單一定要填' ];
 
 function init() {
     // Main Actions
@@ -190,12 +194,14 @@ function init() {
     clearPrizesBtn.addEventListener('click', clearPrizes);
 
     // Bonus Prize Actions (Hidden trigger on participant count)
-    participantCountSpan.addEventListener('click', () => {
+    const openBonusModal = () => {
         bonusRemainingCount.textContent = participants.length;
         bonusPrizeName.value = '';
         bonusPrizeQuantity.value = 1;
         bonusModal.classList.remove('hidden');
-    });
+    };
+    participantCountSpan.addEventListener('click', openBonusModal);
+    bonusOpenBtn.addEventListener('click', openBonusModal);
     cancelBonusBtn.addEventListener('click', () => {
         bonusModal.classList.add('hidden');
     });
@@ -203,12 +209,24 @@ function init() {
 
     // Other settings
     soundToggleBtn.addEventListener('click', toggleSound);
+    fullscreenBtn.addEventListener('click', () => {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+    });
+    document.addEventListener('keydown', (event) => {
+        const target = event.target;
+        if (event.code !== 'Space' || !target || target.closest('button, input, textarea, select, [contenteditable="true"]')) return;
+        if (lotterySection.classList.contains('hidden') || !bonusModal.classList.contains('hidden') || !drawButton.offsetParent) return;
+        event.preventDefault();
+        if (!drawButton.disabled) drawButton.click();
+    });
     simpleDrawToggle.addEventListener('change', handleSimpleDrawToggle);
     
     // Batch drawing toggle
     batchDrawToggle.addEventListener('change', (e) => {
         const isEnabled = e.target.checked;
         batchSettingsContainer.classList.toggle('hidden', !isEnabled);
+        singleDrawCount.classList.toggle('hidden', isEnabled);
         localStorage.setItem('batchDrawEnabled', isEnabled);
     });
 
@@ -275,6 +293,7 @@ function init() {
     const savedBatchEnabled = localStorage.getItem('batchDrawEnabled') === 'true';
     batchDrawToggle.checked = savedBatchEnabled;
     batchSettingsContainer.classList.toggle('hidden', !savedBatchEnabled);
+    singleDrawCount.classList.toggle('hidden', savedBatchEnabled);
 
     const savedFilter = localStorage.getItem('filterDuplicates') === 'true';
     filterDuplicatesToggle.checked = savedFilter;
@@ -380,6 +399,7 @@ function loadSession() {
         simpleDrawToggle.checked = data.simpleDrawMode;
         batchDrawToggle.checked = data.batchDrawEnabled || false;
         batchSettingsContainer.classList.toggle('hidden', !batchDrawToggle.checked);
+        singleDrawCount.classList.toggle('hidden', batchDrawToggle.checked);
         
         // Restore sort setting from session if available, else fallback to localStorage
         if (data.sortWinnersEnabled !== undefined) {
@@ -883,8 +903,12 @@ function handleDrawWinner() {
         return;
     }
 
+    while (currentPrizeIndex < prizes.length && prizes[currentPrizeIndex].winners.length >= prizes[currentPrizeIndex].quantity) {
+        currentPrizeIndex++;
+    }
     const currentPrize = prizes[currentPrizeIndex];
     if (!currentPrize) return;
+    updatePrizeDisplay();
 
     let batchSize = batchDrawToggle.checked ? (parseInt(batchSizeInput.value, 10) || 1) : 1;
     const remainingInPrize = currentPrize.quantity - currentPrize.winners.length;
@@ -897,7 +921,7 @@ function handleDrawWinner() {
         if (currentPrizeIndex < prizes.length) {
             setTimeout(() => { 
                 winnerDisplay.textContent = '準備開始！'; 
-                winnerDisplay.style.fontSize = "4rem";
+                winnerDisplay.style.fontSize = '';
             }, 2000);
         }
         return;
@@ -925,7 +949,7 @@ function handleDrawWinner() {
         const revealWinners = () => {
             if (batchSize === 1) {
                 winnerDisplay.textContent = winnersThisBatch[0];
-                winnerDisplay.style.fontSize = "4rem";
+                winnerDisplay.style.fontSize = '';
             } else {
                 winnerDisplay.innerHTML = `<div class="text-2xl mb-2">恭喜得獎者：</div><div class="flex flex-wrap justify-center gap-2 text-xl">${winnersThisBatch.map(name => `<span class="px-3 py-1 rounded bg-white/20">${name}</span>`).join('')}</div>`;
                 winnerDisplay.style.fontSize = "1.5rem";
@@ -980,6 +1004,9 @@ function switchToLotteryView() {
     settingsSection.classList.add('hidden');
     lotterySection.classList.remove('hidden');
     resetBtn.classList.remove('hidden');
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    window.scrollTo(0, 0);
+    requestAnimationFrame(() => window.scrollTo(0, 0));
     const isSimpleMode = simpleDrawToggle.checked;
     if (isSimpleMode) {
         if (prizes.length === 0) { prizes = [{ name: '抽出名單', quantity: participants.length, winners: [] }]; }
@@ -1010,7 +1037,7 @@ function updatePrizeDisplay() {
     if (allPrizesDrawn) {
         if (isSimpleMode) { currentPrizeDisplay.textContent = '所有人都已抽出！'; drawButton.textContent = '結束'; } 
         else { currentPrizeDisplay.textContent = '所有項目已抽完！'; drawButton.textContent = '抽獎結束'; }
-        drawButton.disabled = false; exportCsvBtn.classList.remove('hidden'); updateWinnersList(); return; 
+        drawButton.disabled = false; exportCsvBtn.classList.remove('hidden'); updateWinnersList(); updateDashboardStats(); return;
     }
     const currentPrize = prizes[currentPrizeIndex];
     if (isSimpleMode) { currentPrizeDisplay.textContent = '幸運的你'; } 
@@ -1020,17 +1047,46 @@ function updatePrizeDisplay() {
     }
     if (currentPrize.winners.length >= currentPrize.quantity) {
         const nextPrize = prizes.find((p, index) => index > currentPrizeIndex && p.winners.length < p.quantity);
+        if (nextPrize) currentPrizeDisplay.textContent = `下一輪：${nextPrize.name} (0 / ${nextPrize.quantity})`;
         drawButton.textContent = nextPrize ? `繼續抽「${nextPrize.name}」` : '抽獎結束';
     } else {
         if (isSimpleMode) { drawButton.textContent = '抽籤'; } 
         else {
             if (winnerDisplay.textContent.includes('準備補抽')) { drawButton.textContent = '開始補抽'; } 
-            else { drawButton.textContent = buttonPhrases[Math.floor(Math.random() * buttonPhrases.length)]; }
+            else { drawButton.textContent = '開始摸彩 (Space)'; }
         }
     }
+    updateDashboardStats();
 }
 
-function updateParticipantCount() { participantCountSpan.textContent = participants.length; }
+function updateParticipantCount() { participantCountSpan.textContent = participants.length; updateDashboardStats(); }
+
+function updateDashboardStats() {
+    const awarded = prizes.reduce((sum, prize) => sum + prize.winners.length, 0);
+    const total = prizes.reduce((sum, prize) => sum + prize.quantity, 0);
+    const activePrize = prizes.find(prize => prize.winners.length < prize.quantity);
+    currentPrizeShort.textContent = activePrize ? activePrize.name : (total ? '全部抽完' : '準備開獎');
+    currentPrizeProgress.textContent = activePrize ? `剩餘額度：${activePrize.quantity - activePrize.winners.length} / ${activePrize.quantity} 位` : (total ? '所有獎項已抽出' : '等待開始');
+    awardedProgress.textContent = `${awarded} / ${total} 份`;
+    prizeProgressList.replaceChildren();
+    prizes.forEach(prize => {
+        const item = document.createElement('div');
+        item.className = 'prize-progress-item';
+        const row = document.createElement('div');
+        const label = document.createElement('span');
+        const count = document.createElement('strong');
+        const track = document.createElement('div');
+        const fill = document.createElement('span');
+        label.textContent = prize.name;
+        count.textContent = `${prize.winners.length}/${prize.quantity} 已抽出`;
+        track.className = 'progress-track';
+        fill.style.width = `${Math.min(100, prize.winners.length / prize.quantity * 100)}%`;
+        row.append(label, count);
+        track.appendChild(fill);
+        item.append(row, track);
+        prizeProgressList.appendChild(item);
+    });
+}
 
 function handleDonate(prizeIndex, winnerIndex) {
     const prize = prizes[prizeIndex];
@@ -1045,7 +1101,7 @@ function handleDonate(prizeIndex, winnerIndex) {
     // 重置抽獎狀態，引導重新抽取
     drawButton.disabled = false;
     winnerDisplay.textContent = '準備補抽！';
-    winnerDisplay.style.fontSize = "4rem";
+    winnerDisplay.style.fontSize = '';
     
     // 清除匯出按鈕（因為名單已變動）
     exportCsvBtn.classList.add('hidden');
@@ -1074,17 +1130,18 @@ function updateWinnersList(forceSort = false) {
         sortWinnersBtn.classList.add('hidden');
     }
 
-    if (hasAnyWinners) { winnersListContainer.classList.remove('hidden'); mainDrawPanel.classList.remove('md:w-full'); mainDrawPanel.classList.add('md:w-[70%]'); } 
-    else { return; }
+    if (!hasAnyWinners) return;
     
     winnersList.innerHTML = '';
     
     const createWinnerTag = (winner, prizeIndex, winnerIndex) => {
         const winnerTagContainer = document.createElement('div');
         winnerTagContainer.className = 'winner-tag px-2 py-1 rounded-md flex items-center justify-between';
-        const winnerNameSpan = document.createElement('span');
+        const winnerNameSpan = document.createElement('button');
+        winnerNameSpan.type = 'button';
         winnerNameSpan.textContent = winner.name;
-        winnerNameSpan.className = 'truncate cursor-pointer';
+        winnerNameSpan.className = 'winner-name-button';
+        winnerNameSpan.title = '切換領獎狀態';
         winnerNameSpan.addEventListener('click', () => {
             winner.claimed = !winner.claimed;
             winnerTagContainer.classList.toggle('claimed', winner.claimed);
@@ -1116,7 +1173,7 @@ function updateWinnersList(forceSort = false) {
         prizes[0].winners.forEach((winner, index) => { winnerNames.appendChild(createWinnerTag(winner, 0, index)); });
         winnersList.appendChild(winnerNames);
     } else {
-        document.getElementById('winners-list-title').textContent = '🎉 得獎名單 🎉';
+        document.getElementById('winners-list-title').textContent = '🏆 得獎榮譽榜';
         prizes.forEach((prize, prizeIndex) => {
             if (prize.winners.length > 0) {
                 const prizeContainer = document.createElement('div');
@@ -1141,13 +1198,13 @@ function updateWinnersList(forceSort = false) {
                     // Fix: Update the REAL data source using originalIndex, not the temporary display copy
                     const winnerTag = createWinnerTag(winner, prizeIndex, winner.originalIndex);
                     
-                    // Override the click listener on the name span specifically to update the correct data reference
-                    const nameSpan = winnerTag.querySelector('span');
+                    // Override the name button listener to update the correct data reference
+                    const nameButton = winnerTag.querySelector('.winner-name-button');
                     // Remove old listener by cloning node (cleanest way without named function)
-                    const newNameSpan = nameSpan.cloneNode(true);
-                    winnerTag.replaceChild(newNameSpan, nameSpan);
+                    const newNameButton = nameButton.cloneNode(true);
+                    winnerTag.replaceChild(newNameButton, nameButton);
                     
-                    newNameSpan.addEventListener('click', () => {
+                    newNameButton.addEventListener('click', () => {
                         // Access the ORIGINAL data source
                         const actualWinner = prizes[prizeIndex].winners[winner.originalIndex];
                         actualWinner.claimed = !actualWinner.claimed;
@@ -1198,18 +1255,18 @@ function exportResultsToCsv() {
 
 function resetApp() {
     settingsSection.classList.remove('hidden'); lotterySection.classList.add('hidden'); resetBtn.classList.add('hidden');
+    window.scrollTo(0, 0);
     participants = []; prizes = []; currentPrizeIndex = 0;
     winnerDisplay.textContent = '準備開始！'; winnerDisplay.classList.remove('winner-reveal');
-    winnerDisplay.style.fontSize = "4rem";
-    winnersList.innerHTML = ''; winnersListContainer.classList.add('hidden');
-    mainDrawPanel.classList.remove('md:w-[70%]'); mainDrawPanel.classList.add('md:w-full');
+    winnerDisplay.style.fontSize = '';
+    winnersList.innerHTML = '<p class="empty-winners">幸運得主將在這裡登場</p>';
     exportCsvBtn.classList.add('hidden'); participantCountSpan.textContent = '0';
     currentPrizeDisplay.textContent = ''; mainTitle.textContent = titleInput.value.trim() || 'ㄚ亮笑長的抽抽樂';
     participantLabel.textContent = '剩餘摸彩人數'; drawButton.textContent = '開始摸彩'; drawButton.disabled = false;
     sheetUrlInput.value = ''; sheetNameInput.value = '工作表1'; columnLetterInput.value = 'A';
     csvUrlInput.value = ''; csvColumnLetterInput.value = 'A'; customListInput.value = ''; excludeListInput.value = '';
     prizesContainer.innerHTML = ''; addPrizeRow('三獎', 3); addPrizeRow('二獎', 2); addPrizeRow('頭獎', 1);
-    loadButton.disabled = false; updateStatus(''); switchTab('custom'); clearSession();
+    loadButton.disabled = false; updateStatus(''); switchTab('custom'); clearSession(); updateDashboardStats();
 }
 
 function launchConfetti() {
