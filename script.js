@@ -11,6 +11,7 @@ const navRosterBtn = document.getElementById('nav-roster-btn');
 const settingsBody = document.getElementById('settings-body');
 const settingsCategoryButtons = {
     env: document.getElementById('settings-category-env'),
+    list: document.getElementById('settings-category-list'),
     prize: document.getElementById('settings-category-prize')
 };
 const settingsDoneBtn = document.getElementById('settings-done-btn');
@@ -89,21 +90,11 @@ const saveExcludeTemplateBtn = document.getElementById('save-exclude-template-bt
 const excludeTemplateButtonsContainer = document.getElementById('exclude-template-buttons-container');
 
 // Environment Tabs
-const tabModeBtn = document.getElementById('tab-mode');
-const tabPrizeBtn = document.getElementById('tab-prize');
-const tabThemeBtn = document.getElementById('tab-theme');
-const tabVisualBtn = document.getElementById('tab-visual');
-const tabEffectBtn = document.getElementById('tab-effect');
-const tabContentMode = document.getElementById('tab-content-mode');
-const tabContentPrize = document.getElementById('tab-content-prize');
-const tabContentTheme = document.getElementById('tab-content-theme');
-const tabContentVisual = document.getElementById('tab-content-visual');
-const tabContentEffect = document.getElementById('tab-content-effect');
-
 // Visual Customization Elements
 const logoImg = document.getElementById('logo-img');
 const logoUpload = document.getElementById('logo-upload');
 const bgUpload = document.getElementById('bg-upload');
+const bgFileName = document.getElementById('bg-file-name');
 const resetLogoBtn = document.getElementById('reset-logo-btn');
 const resetBgBtn = document.getElementById('reset-bg-btn');
 
@@ -170,6 +161,7 @@ function init() {
     navWinnersBtn.addEventListener('click', openWinnersModal);
     Object.entries(settingsCategoryButtons).forEach(([category, button]) => button.addEventListener('click', () => selectSettingsCategory(category)));
     document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
+    document.getElementById('settings-cancel-btn').addEventListener('click', closeSettings);
     settingsDoneBtn.addEventListener('click', () => {
         if (settingsBody.dataset.category === 'list') handleLoadData();
         else {
@@ -227,12 +219,6 @@ function init() {
     saveListTemplateBtn.addEventListener('click', saveListTemplate);
     saveExcludeTemplateBtn.addEventListener('click', saveExcludeTemplate);
     
-    // Environment Tabs
-    tabModeBtn.addEventListener('click', () => switchEnvTab('mode'));
-    tabPrizeBtn.addEventListener('click', () => showSettings('prize'));
-    tabThemeBtn.addEventListener('click', () => switchEnvTab('theme'));
-    tabVisualBtn.addEventListener('click', () => switchEnvTab('visual'));
-    tabEffectBtn.addEventListener('click', () => switchEnvTab('effect'));
     [[columnLetterInput, columnLetterCustomInput], [csvColumnLetterInput, csvColumnLetterCustomInput]].forEach(([select, input]) => {
         select.addEventListener('change', () => input.classList.toggle('hidden', select.value !== 'custom'));
     });
@@ -247,9 +233,14 @@ function init() {
     });
     resetBgBtn.addEventListener('click', () => { 
         localStorage.removeItem('customBg'); 
+        localStorage.removeItem('customBgName');
         bgUpload.value = "";
         loadVisuals(); 
     });
+    document.querySelectorAll('input[name="roll-duration"]').forEach(input => input.addEventListener('change', () => {
+        localStorage.setItem('rollDurationMs', input.value);
+    }));
+    winnerEffectSelect.addEventListener('change', () => localStorage.setItem('winnerEffect', winnerEffectSelect.value));
 
     // Title Setup
     titleInput.addEventListener('input', (e) => {
@@ -366,19 +357,21 @@ function init() {
     setupThemes();
     loadTheme();
     loadVisuals();
+    const savedDuration = localStorage.getItem('rollDurationMs');
+    const durationOption = Array.from(document.querySelectorAll('input[name="roll-duration"]')).find(input => input.value === savedDuration);
+    if (durationOption) durationOption.checked = true;
+    winnerEffectSelect.value = localStorage.getItem('winnerEffect') || 'none';
     renderSavedTemplates();
     renderSavedTitleTemplates();
     renderSavedListTemplates();
     renderSavedExcludeTemplates();
     switchTab(activeDataSource);
-    switchEnvTab('mode');
     handleUrlParams();
 
     // Restore mode settings
     const savedSimpleMode = localStorage.getItem('simpleDrawMode') === 'true';
     simpleDrawToggle.checked = savedSimpleMode;
     if (savedSimpleMode) {
-        tabPrizeBtn.classList.add('hidden');
         settingsCategoryButtons.prize.classList.add('hidden');
     }
 
@@ -455,11 +448,6 @@ function showSettings(area) {
     const category = area === 'list' ? 'list' : area === 'prize' && !simpleDrawToggle.checked ? 'prize' : 'env';
     lastFocusedElement = document.activeElement;
     updateStatus('');
-    settingsSection.dataset.mode = category === 'list' ? 'list' : 'env';
-    document.getElementById('settings-dialog-title').textContent = category === 'list' ? '名單設定' : '環境設定';
-    document.getElementById('settings-dialog-description').textContent = category === 'list'
-        ? '匯入與過濾參與名單' : '管理環境與投影及獎項輪次';
-    settingsDoneBtn.textContent = category === 'list' ? '完成設定並載入名單' : '完成設定';
     settingsSection.classList.remove('hidden');
     selectSettingsCategory(category);
     document.body.classList.add('modal-open');
@@ -468,10 +456,16 @@ function showSettings(area) {
 
 function selectSettingsCategory(category) {
     settingsBody.dataset.category = category;
+    settingsSection.dataset.mode = category;
+    const titles = { env: '環境與投影設定', list: '名單匯入與過濾設定', prize: '獎項輪次配置' };
+    document.getElementById('settings-dialog-title').textContent = titles[category];
+    document.getElementById('settings-dialog-description').textContent = category === 'env'
+        ? '自訂尾牙投影畫面、開獎動效與參加名額管理'
+        : category === 'list' ? '匯入與過濾參與名單' : '管理摸彩獎項與抽取順序';
+    settingsDoneBtn.textContent = category === 'list' ? '完成設定並載入名單'
+        : category === 'env' ? '確認並套用設定' : '儲存獎項設定';
     Object.entries(settingsCategoryButtons).forEach(([key, button]) => button.classList.toggle('active', key === category));
     if (category === 'list') switchTab(activeDataSource);
-    else if (category === 'prize') switchEnvTab('prize');
-    else if (tabPrizeBtn.classList.contains('active')) switchEnvTab('mode');
     settingsSection.querySelector('.settings-dialog').scrollTop = 0;
 }
 
@@ -585,6 +579,7 @@ function handleImageUpload(event, storageKey) {
     const reader = new FileReader();
     reader.onload = (e) => {
         localStorage.setItem(storageKey, e.target.result);
+        if (storageKey === 'customBg') localStorage.setItem('customBgName', file.name);
         loadVisuals();
     };
     reader.readAsDataURL(file);
@@ -603,6 +598,7 @@ function loadVisuals() {
 
     const customBg = localStorage.getItem('customBg');
     heroVisual.style.backgroundImage = customBg ? `url(${customBg})` : "url('hero-izakaya.jpg')";
+    bgFileName.textContent = `目前：${customBg ? (localStorage.getItem('customBgName') || '已載入自訂圖片') : 'hero-izakaya.jpg'}`;
 }
 
 // --- SESSION RECOVERY FUNCTIONS ---
@@ -841,8 +837,7 @@ function switchTab(tabName) {
     tabs[tabName].btn.classList.add('active');
     tabs[tabName].content.classList.remove('hidden');
 }
-function switchEnvTab(tabName) { const tabs = { mode: { btn: tabModeBtn, content: tabContentMode }, prize: { btn: tabPrizeBtn, content: tabContentPrize }, theme: { btn: tabThemeBtn, content: tabContentTheme }, visual: { btn: tabVisualBtn, content: tabContentVisual }, effect: { btn: tabEffectBtn, content: tabContentEffect } }; Object.values(tabs).forEach(tab => { tab.btn.classList.remove('active'); tab.content.classList.add('hidden'); }); tabs[tabName].btn.classList.add('active'); tabs[tabName].content.classList.remove('hidden'); }
-function handleSimpleDrawToggle(e) { const isEnabled = e.target.checked; tabPrizeBtn.classList.toggle('hidden', isEnabled); settingsCategoryButtons.prize.classList.toggle('hidden', isEnabled); if (isEnabled && settingsBody.dataset.category === 'prize') selectSettingsCategory('env'); localStorage.setItem('simpleDrawMode', isEnabled); }
+function handleSimpleDrawToggle(e) { const isEnabled = e.target.checked; settingsCategoryButtons.prize.classList.toggle('hidden', isEnabled); if (isEnabled && settingsBody.dataset.category === 'prize') selectSettingsCategory('env'); localStorage.setItem('simpleDrawMode', isEnabled); }
 function addPrizeRow(name = '', quantity = 1) { const row = document.createElement('div'); row.className = 'prize-row flex items-center gap-2'; row.innerHTML = ' <input type="text" class="prize-name form-input w-full p-2 rounded" placeholder="獎項名稱"> <input type="number" class="prize-quantity form-input w-24 p-2 rounded" min="1" placeholder="數量"> <button class="remove-prize-btn btn-secondary px-3 py-2 rounded" style="color: var(--danger-color);">✕</button> '; row.querySelector('.prize-name').value = name; row.querySelector('.prize-quantity').value = quantity; prizesContainer.appendChild(row); row.querySelector('.remove-prize-btn').addEventListener('click', () => { row.remove(); updateHomeSummary(); }); updateHomeSummary(); }
 const clearPrizes = () => { prizesContainer.innerHTML = ''; updateHomeSummary(); };
 function setColumnChoice(select, customInput, column) {
@@ -1360,7 +1355,7 @@ function handleDrawWinner() {
         } else {
             revealWinners();
         }
-    }, 4000);
+    }, Number(document.querySelector('input[name="roll-duration"]:checked')?.value) || 5000);
 }
 
 function setupThemes() {
