@@ -8,13 +8,16 @@ const navWinnersBtn = document.getElementById('nav-winners-btn');
 const navBonusBtn = document.getElementById('nav-bonus-btn');
 const navSettingsBtn = document.getElementById('nav-settings-btn');
 const navRosterBtn = document.getElementById('nav-roster-btn');
+const themeMenuBtn = document.getElementById('theme-menu-btn');
+const themePopover = document.getElementById('theme-popover');
 const settingsBody = document.getElementById('settings-body');
 const settingsCategoryButtons = {
     env: document.getElementById('settings-category-env'),
-    list: document.getElementById('settings-category-list'),
     prize: document.getElementById('settings-category-prize')
 };
 const settingsDoneBtn = document.getElementById('settings-done-btn');
+const saveEnvTemplateBtn = document.getElementById('save-env-template-btn');
+const loadEnvTemplateBtn = document.getElementById('load-env-template-btn');
 const winnersModal = document.getElementById('winners-modal');
 const winnersModalList = document.getElementById('winners-modal-list');
 const downloadWinnersBtn = document.getElementById('download-winners-btn');
@@ -95,6 +98,7 @@ const logoImg = document.getElementById('logo-img');
 const logoUpload = document.getElementById('logo-upload');
 const bgUpload = document.getElementById('bg-upload');
 const bgFileName = document.getElementById('bg-file-name');
+const logoFileName = document.getElementById('logo-file-name');
 const resetLogoBtn = document.getElementById('reset-logo-btn');
 const resetBgBtn = document.getElementById('reset-bg-btn');
 
@@ -111,7 +115,7 @@ const batchSettingsContainer = document.getElementById('batch-settings');
 
 const rollingSound = document.getElementById('rolling-sound');
 const winnerSound = document.getElementById('winner-sound');
-const winnerEffectSelect = document.getElementById('winner-effect-select');
+const winnerEffectOptions = Array.from(document.querySelectorAll('input[name="winner-effect"]'));
 
 // Duplicates Modal Elements
 const duplicatesModal = document.getElementById('duplicates-modal');
@@ -160,6 +164,8 @@ function init() {
     navRosterBtn.addEventListener('click', () => showSettings('list'));
     navWinnersBtn.addEventListener('click', openWinnersModal);
     Object.entries(settingsCategoryButtons).forEach(([category, button]) => button.addEventListener('click', () => selectSettingsCategory(category)));
+    saveEnvTemplateBtn.addEventListener('click', saveEnvironmentTemplate);
+    loadEnvTemplateBtn.addEventListener('click', loadEnvironmentTemplate);
     document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
     document.getElementById('settings-cancel-btn').addEventListener('click', closeSettings);
     settingsDoneBtn.addEventListener('click', () => {
@@ -228,6 +234,7 @@ function init() {
     bgUpload.addEventListener('change', (e) => handleImageUpload(e, 'customBg'));
     resetLogoBtn.addEventListener('click', () => { 
         localStorage.removeItem('customLogo'); 
+        localStorage.removeItem('customLogoName');
         logoUpload.value = "";
         loadVisuals(); 
     });
@@ -240,7 +247,7 @@ function init() {
     document.querySelectorAll('input[name="roll-duration"]').forEach(input => input.addEventListener('change', () => {
         localStorage.setItem('rollDurationMs', input.value);
     }));
-    winnerEffectSelect.addEventListener('change', () => localStorage.setItem('winnerEffect', winnerEffectSelect.value));
+    winnerEffectOptions.forEach(input => input.addEventListener('change', () => localStorage.setItem('winnerEffect', input.value)));
 
     // Title Setup
     titleInput.addEventListener('input', (e) => {
@@ -272,6 +279,10 @@ function init() {
 
     // Other settings
     soundToggleBtn.addEventListener('click', toggleSound);
+    themeMenuBtn.addEventListener('click', () => toggleThemePopover());
+    document.addEventListener('click', event => {
+        if (!themePopover.classList.contains('hidden') && !event.target.closest('.theme-control')) toggleThemePopover(false);
+    });
     fullscreenBtn.addEventListener('click', toggleFullscreen);
     document.addEventListener('fullscreenchange', updateFullscreenButton);
     document.addEventListener('keydown', (event) => {
@@ -280,6 +291,7 @@ function init() {
             : !settingsSection.classList.contains('hidden') ? settingsSection : null;
         if (event.key === 'Escape') {
             toggleTitlePopover(false);
+            toggleThemePopover(false);
             if (!winnersModal.classList.contains('hidden')) closeWinnersModal();
             else if (!settingsSection.classList.contains('hidden')) closeSettings();
         }
@@ -360,7 +372,9 @@ function init() {
     const savedDuration = localStorage.getItem('rollDurationMs');
     const durationOption = Array.from(document.querySelectorAll('input[name="roll-duration"]')).find(input => input.value === savedDuration);
     if (durationOption) durationOption.checked = true;
-    winnerEffectSelect.value = localStorage.getItem('winnerEffect') || 'none';
+    const savedEffect = localStorage.getItem('winnerEffect');
+    const effectOption = winnerEffectOptions.find(input => input.value === savedEffect);
+    if (effectOption) effectOption.checked = true;
     renderSavedTemplates();
     renderSavedTitleTemplates();
     renderSavedListTemplates();
@@ -399,6 +413,7 @@ function init() {
         recoveryModal.classList.remove('hidden');
     }
     updateHomeSummary();
+    refreshEnvironmentTemplateButton();
 
     window.addEventListener('resize', () => { if (document.getElementById('finished-prize-name')) { adjustPrizeNameFontSize(); } });
 };
@@ -418,10 +433,120 @@ function saveEnvironmentTitle() {
     eventTitleSaveStatus.textContent = '活動標題已儲存';
 }
 
+function openEnvironmentTemplateDb() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('lotteryEnvironmentTemplates', 1);
+        request.onupgradeneeded = () => request.result.createObjectStore('templates');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function readEnvironmentTemplate() {
+    const db = await openEnvironmentTemplateDb();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('templates', 'readonly');
+        const request = transaction.objectStore('templates').get('current');
+        request.onsuccess = () => resolve(request.result || null);
+        transaction.onerror = () => reject(transaction.error);
+        transaction.oncomplete = () => db.close();
+    });
+}
+
+async function writeEnvironmentTemplate(settings) {
+    const db = await openEnvironmentTemplateDb();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('templates', 'readwrite');
+        transaction.objectStore('templates').put(settings, 'current');
+        transaction.oncomplete = () => { db.close(); resolve(); };
+        transaction.onerror = () => { db.close(); reject(transaction.error); };
+    });
+}
+
+function getWinnerEffect() {
+    return winnerEffectOptions.find(input => input.checked)?.value || 'confetti';
+}
+
+async function refreshEnvironmentTemplateButton() {
+    try {
+        loadEnvTemplateBtn.classList.toggle('hidden', !(await readEnvironmentTemplate()));
+    } catch (error) {
+        loadEnvTemplateBtn.classList.add('hidden');
+        console.error('無法讀取環境範本：', error);
+    }
+}
+
+async function saveEnvironmentTemplate() {
+    saveEnvironmentTitle();
+    const settings = {
+        eventTitle: eventTitleText.textContent,
+        theme: localStorage.getItem('lotteryTheme') || 'candy',
+        soundOn: isSoundOn,
+        duration: document.querySelector('input[name="roll-duration"]:checked')?.value || '5000',
+        effect: getWinnerEffect(),
+        simpleDrawMode: simpleDrawToggle.checked,
+        batchDrawEnabled: batchDrawToggle.checked,
+        filterDuplicates: filterDuplicatesToggle.checked,
+        sortWinnersEnabled: sortWinnersToggle.checked,
+        customBg: localStorage.getItem('customBg'),
+        customBgName: localStorage.getItem('customBgName'),
+        customLogo: localStorage.getItem('customLogo'),
+        customLogoName: localStorage.getItem('customLogoName')
+    };
+    try {
+        await writeEnvironmentTemplate(settings);
+        loadEnvTemplateBtn.classList.remove('hidden');
+        eventTitleSaveStatus.textContent = '環境範本已儲存到本機';
+    } catch (error) {
+        eventTitleSaveStatus.textContent = '範本儲存失敗，請檢查瀏覽器儲存空間';
+        console.error('無法儲存環境範本：', error);
+    }
+}
+
+async function loadEnvironmentTemplate() {
+    try {
+        const settings = await readEnvironmentTemplate();
+        if (!settings) { loadEnvTemplateBtn.classList.add('hidden'); return; }
+        for (const key of ['customBg', 'customBgName', 'customLogo', 'customLogoName']) {
+            if (settings[key]) localStorage.setItem(key, settings[key]);
+            else localStorage.removeItem(key);
+        }
+        setEventTitle(settings.eventTitle);
+        applyTheme(settings.theme);
+        if (isSoundOn !== settings.soundOn) toggleSound();
+        simpleDrawToggle.checked = settings.simpleDrawMode;
+        handleSimpleDrawToggle({ target: simpleDrawToggle });
+        batchDrawToggle.checked = settings.batchDrawEnabled;
+        batchSettingsContainer.classList.toggle('hidden', !settings.batchDrawEnabled);
+        singleDrawCount.classList.toggle('hidden', settings.batchDrawEnabled);
+        localStorage.setItem('batchDrawEnabled', settings.batchDrawEnabled);
+        filterDuplicatesToggle.checked = settings.filterDuplicates;
+        localStorage.setItem('filterDuplicates', settings.filterDuplicates);
+        sortWinnersToggle.checked = settings.sortWinnersEnabled;
+        localStorage.setItem('sortWinnersEnabled', settings.sortWinnersEnabled);
+        document.querySelector(`input[name="roll-duration"][value="${settings.duration}"]`)?.click();
+        winnerEffectOptions.find(input => input.value === settings.effect)?.click();
+        loadVisuals();
+        updateWinnersList(true);
+        updateHomeSummary();
+        if (!lotterySection.classList.contains('hidden')) updatePrizeDisplay();
+        if (participants.length) saveSession();
+        eventTitleSaveStatus.textContent = '環境範本已載入';
+    } catch (error) {
+        eventTitleSaveStatus.textContent = '範本載入失敗，請檢查瀏覽器儲存空間';
+        console.error('無法載入環境範本：', error);
+    }
+}
+
 function toggleTitlePopover(open = eventTitlePopover.classList.contains('hidden')) {
     eventTitlePopover.classList.toggle('hidden', !open);
     eventTitlePill.setAttribute('aria-expanded', String(open));
     if (open) titleInput.focus();
+}
+
+function toggleThemePopover(open = themePopover.classList.contains('hidden')) {
+    themePopover.classList.toggle('hidden', !open);
+    themeMenuBtn.setAttribute('aria-expanded', String(open));
 }
 
 function setActiveNav(button) {
@@ -448,8 +573,10 @@ function showSettings(area) {
     const category = area === 'list' ? 'list' : area === 'prize' && !simpleDrawToggle.checked ? 'prize' : 'env';
     lastFocusedElement = document.activeElement;
     updateStatus('');
+    toggleThemePopover(false);
     settingsSection.classList.remove('hidden');
     selectSettingsCategory(category);
+    if (category === 'env') refreshEnvironmentTemplateButton();
     document.body.classList.add('modal-open');
     document.getElementById('close-settings-btn').focus();
 }
@@ -466,7 +593,7 @@ function selectSettingsCategory(category) {
         : category === 'env' ? '確認並套用設定' : '儲存獎項設定';
     Object.entries(settingsCategoryButtons).forEach(([key, button]) => button.classList.toggle('active', key === category));
     if (category === 'list') switchTab(activeDataSource);
-    settingsSection.querySelector('.settings-dialog').scrollTop = 0;
+    settingsBody.scrollTop = 0;
 }
 
 function closeSettings() {
@@ -578,9 +705,14 @@ function handleImageUpload(event, storageKey) {
     
     const reader = new FileReader();
     reader.onload = (e) => {
-        localStorage.setItem(storageKey, e.target.result);
-        if (storageKey === 'customBg') localStorage.setItem('customBgName', file.name);
-        loadVisuals();
+        try {
+            localStorage.setItem(storageKey, e.target.result);
+            localStorage.setItem(storageKey === 'customBg' ? 'customBgName' : 'customLogoName', file.name);
+            loadVisuals();
+        } catch (error) {
+            alert('圖片無法儲存到本機，請改用較小的圖片。');
+            console.error('無法儲存自訂圖片：', error);
+        }
     };
     reader.readAsDataURL(file);
 }
@@ -595,6 +727,7 @@ function loadVisuals() {
         logoImg.src = "Logo.png";
         logoImg.classList.add('default-logo');
     }
+    logoFileName.textContent = `目前：${customLogo ? (localStorage.getItem('customLogoName') || '已載入自訂標誌') : 'Logo.png'}`;
 
     const customBg = localStorage.getItem('customBg');
     heroVisual.style.backgroundImage = customBg ? `url(${customBg})` : "url('hero-izakaya.jpg')";
@@ -684,8 +817,8 @@ async function toggleFullscreen() {
 
 function updateFullscreenButton() {
     const enabled = Boolean(document.fullscreenElement);
-    document.getElementById('fullscreen-label').textContent = enabled ? '離開全螢幕' : '全螢幕';
     fullscreenBtn.setAttribute('aria-label', enabled ? '離開全螢幕' : '進入全螢幕');
+    fullscreenBtn.dataset.tooltip = enabled ? '離開全螢幕' : '全螢幕';
     fullscreenBtn.setAttribute('aria-pressed', String(enabled));
 }
 
@@ -818,7 +951,7 @@ const playWinnerSound = () => { if (!isSoundOn) return; winnerSound.currentTime 
 const toggleSound = () => {
     isSoundOn = !isSoundOn;
     document.getElementById('sound-icon').textContent = isSoundOn ? '🔊' : '🔇';
-    soundToggleBtn.lastElementChild.textContent = isSoundOn ? '音效開啟' : '音效關閉';
+    soundToggleBtn.dataset.tooltip = isSoundOn ? '音效開啟' : '音效關閉';
     soundToggleBtn.setAttribute('aria-label', isSoundOn ? '關閉音效' : '開啟音效');
     if (!isSoundOn) stopTenseMusic();
 };
@@ -1319,7 +1452,7 @@ function handleDrawWinner() {
             currentPrize.winners.push({ name: winnerName, claimed: false });
         }
 
-        const selectedEffect = winnerEffectSelect.value;
+        const selectedEffect = getWinnerEffect();
         const revealWinners = () => {
             if (batchSize === 1) {
                 winnerDisplay.textContent = winnersThisBatch[0];
@@ -1340,7 +1473,7 @@ function handleDrawWinner() {
             else { winnerDisplay.classList.add('winner-reveal'); }
             
             playWinnerSound();
-            launchConfetti();
+            if (selectedEffect === 'confetti') launchConfetti();
             updateParticipantCount();
             updateWinnersList(true);
             updatePrizeDisplay();
@@ -1362,11 +1495,13 @@ function setupThemes() {
     themeSelector.innerHTML = '';
     themes.forEach(theme => {
         const button = document.createElement('button');
+        button.type = 'button';
         button.className = 'theme-button';
         button.title = theme.name;
+        button.setAttribute('aria-label', theme.name);
         button.dataset.theme = theme.id;
         button.style.background = `linear-gradient(45deg, ${theme.colors[0]}, ${theme.colors[1]})`;
-        button.addEventListener('click', () => { applyTheme(theme.id); });
+        button.addEventListener('click', () => { applyTheme(theme.id); toggleThemePopover(false); });
         themeSelector.appendChild(button);
     });
 }

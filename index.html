@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <link rel="icon" type="image/png" href="Logo.png">
-    <link rel="stylesheet" href="style.css?v=20261015-1">
+    <link rel="stylesheet" href="style.css?v=20261015-2">
 </head>
 
 <body class="app-body">
@@ -48,14 +48,18 @@
                 </div>
             </div>
             <nav class="main-nav" aria-label="主選單">
-                <button id="nav-home-btn" class="nav-button active" type="button"><span aria-hidden="true">▦</span>活動大廳</button>
-                <button id="sound-toggle-btn" class="nav-button" type="button" aria-label="切換音效"><span id="sound-icon" aria-hidden="true">🔊</span><span>音效開啟</span></button>
-                <button id="fullscreen-btn" class="nav-button" type="button" aria-label="進入全螢幕"><span aria-hidden="true">⛶</span><span id="fullscreen-label">全螢幕</span></button>
-                <button id="nav-winners-btn" class="nav-button" type="button"><span aria-hidden="true">🏅</span>中獎記錄</button>
-                <button id="nav-bonus-btn" class="nav-button" type="button"><span aria-hidden="true">🎁</span>老闆加碼</button>
-                <button id="nav-settings-btn" class="nav-button nav-button-accent" type="button"><span aria-hidden="true">☷</span>環境設定</button>
-                <button id="nav-roster-btn" class="nav-button nav-button-accent" type="button"><span aria-hidden="true">♧</span>名單設定</button>
-                <button id="reset-btn" class="header-reset-button hidden" title="結束活動並返回設定">↺ <span>重新設定</span></button>
+                <button id="nav-home-btn" class="nav-button active" type="button" aria-label="活動大廳" data-tooltip="活動大廳"><span aria-hidden="true">▦</span></button>
+                <button id="sound-toggle-btn" class="nav-button" type="button" aria-label="關閉音效" data-tooltip="音效開啟"><span id="sound-icon" aria-hidden="true">🔊</span></button>
+                <div class="theme-control">
+                    <button id="theme-menu-btn" class="nav-button" type="button" aria-label="佈景主題" data-tooltip="佈景主題" aria-expanded="false" aria-controls="theme-popover"><span aria-hidden="true">🎨</span></button>
+                    <div id="theme-popover" class="theme-popover hidden"><strong>佈景主題</strong><div id="theme-selector" class="theme-selector"></div></div>
+                </div>
+                <button id="fullscreen-btn" class="nav-button" type="button" aria-label="進入全螢幕" data-tooltip="全螢幕"><span aria-hidden="true">⛶</span></button>
+                <button id="nav-winners-btn" class="nav-button" type="button" aria-label="中獎記錄" data-tooltip="中獎記錄"><span aria-hidden="true">🏅</span></button>
+                <button id="nav-bonus-btn" class="nav-button" type="button" aria-label="老闆加碼" data-tooltip="老闆加碼"><span aria-hidden="true">🎁</span></button>
+                <button id="nav-settings-btn" class="nav-button nav-button-accent" type="button" aria-label="環境設定" data-tooltip="環境設定"><span aria-hidden="true">☷</span></button>
+                <button id="nav-roster-btn" class="nav-button nav-button-accent" type="button" aria-label="名單設定" data-tooltip="名單設定"><span aria-hidden="true">♧</span></button>
+                <button id="reset-btn" class="header-reset-button hidden" type="button" aria-label="重新設定" data-tooltip="重新設定"><span aria-hidden="true">↺</span></button>
             </nav>
         </header>
 
@@ -90,7 +94,6 @@
         </div>
         <nav class="settings-category-nav" aria-label="環境設定分類">
             <button id="settings-category-env" class="active" type="button">⚙ 環境與投影</button>
-            <button id="settings-category-list" type="button">♧ 名單匯入與過濾</button>
             <button id="settings-category-prize" type="button">🏅 獎項輪次配置</button>
         </nav>
         <div id="settings-body" class="setup-layout settings-body" data-category="env">
@@ -189,27 +192,28 @@
                 </div>
             </div>
 
-            <div id="tab-content-theme" class="hidden mt-6">
-                <div class="env-extra-setting">
-                    <div><strong>布景主題</strong><small>選擇活動畫面的色彩風格</small></div>
-                    <div id="theme-selector" class="flex items-center justify-center gap-3"></div>
-                </div>
-            </div>
-
             <div id="tab-content-visual" class="hidden">
-                <div class="env-section-heading"><h3 class="env-section-title">▧ 自訂視覺（活動企劃主視覺）</h3><span class="env-section-chip">舞台主視覺自訂</span></div>
-                <p class="env-section-description">選取本機檔案作為活動主視覺背景或海報（支援 JPG、PNG、WEBP，2 MB 以下）</p>
-                <div class="env-upload-row">
-                    <label for="bg-upload" class="env-upload-button">⇧ 選取本機檔案</label>
-                    <input type="file" id="bg-upload" class="sr-only" accept="image/jpeg,image/png,image/webp">
-                    <span id="bg-file-name" class="env-file-name">目前：hero-izakaya.jpg</span>
-                    <button id="reset-bg-btn" class="env-reset-button" type="button">↶ 恢復預設</button>
-                </div>
-                <div class="env-extra-setting">
-                    <div><strong>自訂標誌（Logo）</strong><small>更換標題旁的標誌圖片</small></div>
-                    <label for="logo-upload" class="env-upload-button">選取標誌</label>
-                    <input type="file" id="logo-upload" class="sr-only" accept="image/*">
-                    <button id="reset-logo-btn" class="env-reset-button" type="button">恢復預設 Logo</button>
+                <div class="env-visual-grid">
+                    <div class="env-visual-card">
+                        <div class="env-section-heading"><h3 class="env-section-title">▧ 自訂視覺（活動企劃主視覺）</h3><span class="env-section-chip">舞台主視覺自訂</span></div>
+                        <p class="env-section-description">選取活動主視覺背景或海報（JPG、PNG、WEBP，2 MB 以下）</p>
+                        <div class="env-upload-row">
+                            <label for="bg-upload" class="env-upload-button">⇧ 選取本機檔案</label>
+                            <input type="file" id="bg-upload" class="sr-only" accept="image/jpeg,image/png,image/webp">
+                            <span id="bg-file-name" class="env-file-name">目前：hero-izakaya.jpg</span>
+                            <button id="reset-bg-btn" class="env-reset-button" type="button">↶ 恢復預設</button>
+                        </div>
+                    </div>
+                    <div class="env-visual-card">
+                        <h3 class="env-section-title">▧ 自訂標誌（Logo）</h3>
+                        <p class="env-section-description">更換標題旁的標誌圖片（2 MB 以下）</p>
+                        <div class="env-upload-row">
+                            <label for="logo-upload" class="env-upload-button">⇧ 選取標誌</label>
+                            <input type="file" id="logo-upload" class="sr-only" accept="image/*">
+                            <span id="logo-file-name" class="env-file-name">目前：Logo.png</span>
+                            <button id="reset-logo-btn" class="env-reset-button" type="button">↶ 恢復預設</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -221,16 +225,11 @@
                     <label><input type="radio" name="roll-duration" value="8000"><span class="duration-card"><strong>8 秒</strong><small>緊張刺激</small></span></label>
                     <label><input type="radio" name="roll-duration" value="12000"><span class="duration-card"><strong>12 秒</strong><small>大獎懸疑</small></span></label>
                 </div>
-            </div>
-
-            <div id="tab-content-effect" class="hidden mt-6">
-                <div class="env-extra-setting">
-                    <label for="winner-effect-select"><strong>中獎動畫特效</strong><small>得獎姓名出現時的呈現方式</small></label>
-                    <select id="winner-effect-select" class="form-input w-full p-2 rounded">
-                        <option value="none">標準效果</option>
-                        <option value="spotlight">聚光燈效果</option>
-                        <option value="marquee">文字跑馬燈</option>
-                    </select>
+                <h3 class="env-section-title effect-heading">✦ 中獎現場影音視聽特效</h3>
+                <div class="effect-options" role="radiogroup" aria-label="中獎動畫特效">
+                    <label><input type="radio" name="winner-effect" value="spotlight"><span class="effect-card"><span class="effect-check" aria-hidden="true"></span><span class="effect-icon">☀</span>舞台聚光燈效果</span></label>
+                    <label><input type="radio" name="winner-effect" value="confetti" checked><span class="effect-card"><span class="effect-check" aria-hidden="true"></span><span class="effect-icon">🎉</span>歡慶彩花特效</span></label>
+                    <label><input type="radio" name="winner-effect" value="marquee"><span class="effect-card"><span class="effect-check" aria-hidden="true"></span><span class="effect-icon">▣</span>文字跑馬燈動畫</span></label>
                 </div>
             </div>
         </div>
@@ -383,7 +382,8 @@
         </div>
         <div class="settings-dialog-footer">
             <button id="settings-cancel-btn" class="settings-cancel-button" type="button">關閉</button>
-            <button id="save-env-template-btn" class="btn-secondary env-template-button" type="button" disabled title="即將推出">儲存為範本</button>
+            <button id="load-env-template-btn" class="btn-secondary env-template-button hidden" type="button">載入範本</button>
+            <button id="save-env-template-btn" class="btn-secondary env-template-button" type="button">儲存為範本</button>
             <button id="settings-done-btn" class="btn-primary" type="button">確認並套用設定</button>
         </div>
       </div>
@@ -538,7 +538,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20261015-1"></script>
+    <script src="script.js?v=20261015-2"></script>
 </body>
 
 </html>
