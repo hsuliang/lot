@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <link rel="icon" type="image/png" href="Logo.png">
-    <link rel="stylesheet" href="style.css?v=20261015-2">
+    <link rel="stylesheet" href="style.css?v=20261015-3">
 </head>
 
 <body class="app-body">
@@ -57,7 +57,7 @@
                 <button id="fullscreen-btn" class="nav-button" type="button" aria-label="進入全螢幕" data-tooltip="全螢幕"><span aria-hidden="true">⛶</span></button>
                 <button id="nav-winners-btn" class="nav-button" type="button" aria-label="中獎記錄" data-tooltip="中獎記錄"><span aria-hidden="true">🏅</span></button>
                 <button id="nav-bonus-btn" class="nav-button" type="button" aria-label="老闆加碼" data-tooltip="老闆加碼"><span aria-hidden="true">🎁</span></button>
-                <button id="nav-settings-btn" class="nav-button nav-button-accent" type="button" aria-label="環境設定" data-tooltip="環境設定"><span aria-hidden="true">☷</span></button>
+                <button id="nav-settings-btn" class="nav-button nav-button-accent" type="button" aria-label="環境設定" data-tooltip="環境設定"><span aria-hidden="true">⚙</span></button>
                 <button id="nav-roster-btn" class="nav-button nav-button-accent" type="button" aria-label="名單設定" data-tooltip="名單設定"><span aria-hidden="true">♧</span></button>
                 <button id="reset-btn" class="header-reset-button hidden" type="button" aria-label="重新設定" data-tooltip="重新設定"><span aria-hidden="true">↺</span></button>
             </nav>
@@ -88,7 +88,7 @@
     <section id="settings-section" class="settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
       <div class="settings-dialog">
         <div class="settings-dialog-header">
-            <span class="settings-header-icon" aria-hidden="true">☷</span>
+            <span id="settings-header-icon" class="settings-header-icon" aria-hidden="true">⚙</span>
             <div><h2 id="settings-dialog-title">環境與投影設定</h2><p id="settings-dialog-description">自訂尾牙投影畫面、開獎動效與參加名額管理</p></div>
             <button id="close-settings-btn" class="dialog-close" type="button" aria-label="關閉設定">✕</button>
         </div>
@@ -196,7 +196,7 @@
                 <div class="env-visual-grid">
                     <div class="env-visual-card">
                         <div class="env-section-heading"><h3 class="env-section-title">▧ 自訂視覺（活動企劃主視覺）</h3><span class="env-section-chip">舞台主視覺自訂</span></div>
-                        <p class="env-section-description">選取活動主視覺背景或海報（JPG、PNG、WEBP，2 MB 以下）</p>
+                        <p class="env-section-description">選取活動主視覺背景或海報（JPG、PNG、WEBP，10 MB 以下）</p>
                         <div class="env-upload-row">
                             <label for="bg-upload" class="env-upload-button">⇧ 選取本機檔案</label>
                             <input type="file" id="bg-upload" class="sr-only" accept="image/jpeg,image/png,image/webp">
@@ -206,7 +206,7 @@
                     </div>
                     <div class="env-visual-card">
                         <h3 class="env-section-title">▧ 自訂標誌（Logo）</h3>
-                        <p class="env-section-description">更換標題旁的標誌圖片（2 MB 以下）</p>
+                        <p class="env-section-description">更換標題旁的標誌圖片（10 MB 以下）</p>
                         <div class="env-upload-row">
                             <label for="logo-upload" class="env-upload-button">⇧ 選取標誌</label>
                             <input type="file" id="logo-upload" class="sr-only" accept="image/*">
@@ -240,9 +240,6 @@
                     <button id="tab-custom" class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg">
                         自訂名單
                     </button>
-                    <button id="tab-cloud" class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg">
-                        共用連結
-                    </button>
                     <button id="tab-csv" class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-lg">
                         雲端名單
                     </button>
@@ -273,40 +270,6 @@
                     <textarea id="custom-list" rows="6" class="form-input w-full p-2 rounded"
                         placeholder="請在此輸入名單..."></textarea>
                     <p class="text-sm mt-2" style="color: var(--text-muted-color);">提示：一行一個名字，或用半形逗號「,」隔開。</p>
-                </div>
-            </div>
-
-            <div id="tab-content-cloud" class="hidden mt-6">
-                <div class="space-y-4">
-                    <div>
-                        <label for="sheet-url" class="block mb-1 font-semibold"
-                            style="color: var(--accent-color);">Google 試算表「共用」網址</label>
-                        <input type="url" id="sheet-url" class="form-input w-full p-2 rounded"
-                            placeholder="貼上「知道連結的任何人」權限的共用連結">
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="sheet-name" class="block mb-1 font-semibold"
-                                style="color: var(--accent-color);">工作表名稱</label>
-                            <input type="text" id="sheet-name" class="form-input w-full p-2 rounded" value="工作表1">
-                        </div>
-                        <div>
-                            <label for="column-letter" class="block mb-1 font-semibold"
-                                style="color: var(--accent-color);">名單在哪一欄？</label>
-                            <select id="column-letter" class="form-input w-full p-2 rounded">
-                                <option value="A">A 欄</option><option value="B">B 欄</option><option value="C">C 欄</option><option value="D">D 欄</option><option value="E">E 欄</option>
-                                <option value="F">F 欄</option><option value="G">G 欄</option><option value="H">H 欄</option><option value="I">I 欄</option><option value="J">J 欄</option><option value="custom">自訂</option>
-                            </select>
-                            <input type="text" id="column-letter-custom" maxlength="2" class="form-input w-full p-2 rounded mt-2 hidden" placeholder="例如 K 或 AA" aria-label="自訂名單欄位">
-                        </div>
-                    </div>
-                    <div class="mt-2">
-                        <label class="inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="cloud-smart-filter" class="form-checkbox rounded text-red-500"
-                                checked>
-                            <span class="ml-2" style="color: var(--text-color);">啟用智慧過濾（自動比對電話、Email 以區分同名同姓）</span>
-                        </label>
-                    </div>
                 </div>
             </div>
 
@@ -438,10 +401,7 @@
     <audio id="rolling-sound" src="https://hsuliang.github.io/rool5.mp3" preload="auto" loop></audio>
     <audio id="winner-sound" src="https://hsuliang.github.io/happy.mp3" preload="auto"></audio>
 
-    <footer class="app-footer">
-        <div><span>v3.0 丙午．春分</span> | <span>由 Google Gemini 強力驅動</span> | <a href="https://bit.ly/Alaing" target="_blank" rel="noopener noreferrer">ㄚ亮笑長練功坊</a></div>
-        <div class="footer-links"><button type="button" disabled title="即將推出">使用手冊</button><button type="button" disabled title="即將推出">快捷鍵指南</button><button type="button" disabled title="即將推出">技術支援</button></div>
-    </footer>
+    <footer class="app-footer"><a href="https://bit.ly/Alaing" target="_blank" rel="noopener noreferrer">ㄚ亮笑長練功坊</a><span aria-hidden="true">|</span><span>丙午．寒露．20261015R1</span></footer>
 
     <section id="winners-modal" class="settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="winners-dialog-title">
         <div class="winners-dialog">
@@ -538,7 +498,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20261015-2"></script>
+    <script src="script.js?v=20261015-3"></script>
 </body>
 
 </html>

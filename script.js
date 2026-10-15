@@ -34,10 +34,6 @@ const heroVisual = document.getElementById('hero-visual');
 const eventTitlePill = document.getElementById('event-title-pill');
 const eventTitleText = document.getElementById('event-title-text');
 const eventTitlePopover = document.getElementById('event-title-popover');
-const sheetUrlInput = document.getElementById('sheet-url');
-const sheetNameInput = document.getElementById('sheet-name');
-const columnLetterInput = document.getElementById('column-letter');
-const columnLetterCustomInput = document.getElementById('column-letter-custom');
 const csvUrlInput = document.getElementById('csv-url-input');
 const csvColumnLetterInput = document.getElementById('csv-column-letter');
 const csvColumnLetterCustomInput = document.getElementById('csv-column-letter-custom');
@@ -63,11 +59,9 @@ const singleDrawCount = document.getElementById('single-draw-count');
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 const soundToggleBtn = document.getElementById('sound-toggle-btn');
 const resetBtn = document.getElementById('reset-btn');
-const tabCloudBtn = document.getElementById('tab-cloud');
 const tabCustomBtn = document.getElementById('tab-custom');
 const tabCsvBtn = document.getElementById('tab-csv');
 const tabExcludeBtn = document.getElementById('tab-exclude');
-const tabContentCloud = document.getElementById('tab-content-cloud');
 const tabContentCustom = document.getElementById('tab-content-custom');
 const tabContentCsv = document.getElementById('tab-content-csv');
 const tabContentExclude = document.getElementById('tab-content-exclude');
@@ -219,31 +213,20 @@ function init() {
 
     // List Setup Tabs
     tabCustomBtn.addEventListener('click', () => switchTab('custom'));
-    tabCloudBtn.addEventListener('click', () => switchTab('cloud'));
     tabCsvBtn.addEventListener('click', () => switchTab('csv'));
     tabExcludeBtn.addEventListener('click', () => switchTab('exclude'));
     saveListTemplateBtn.addEventListener('click', saveListTemplate);
     saveExcludeTemplateBtn.addEventListener('click', saveExcludeTemplate);
     
-    [[columnLetterInput, columnLetterCustomInput], [csvColumnLetterInput, csvColumnLetterCustomInput]].forEach(([select, input]) => {
-        select.addEventListener('change', () => input.classList.toggle('hidden', select.value !== 'custom'));
+    csvColumnLetterInput.addEventListener('change', () => {
+        csvColumnLetterCustomInput.classList.toggle('hidden', csvColumnLetterInput.value !== 'custom');
     });
 
     // Visual Customization Actions
     logoUpload.addEventListener('change', (e) => handleImageUpload(e, 'customLogo'));
     bgUpload.addEventListener('change', (e) => handleImageUpload(e, 'customBg'));
-    resetLogoBtn.addEventListener('click', () => { 
-        localStorage.removeItem('customLogo'); 
-        localStorage.removeItem('customLogoName');
-        logoUpload.value = "";
-        loadVisuals(); 
-    });
-    resetBgBtn.addEventListener('click', () => { 
-        localStorage.removeItem('customBg'); 
-        localStorage.removeItem('customBgName');
-        bgUpload.value = "";
-        loadVisuals(); 
-    });
+    resetLogoBtn.addEventListener('click', () => resetVisual('customLogo', logoUpload));
+    resetBgBtn.addEventListener('click', () => resetVisual('customBg', bgUpload));
     document.querySelectorAll('input[name="roll-duration"]').forEach(input => input.addEventListener('change', () => {
         localStorage.setItem('rollDurationMs', input.value);
     }));
@@ -380,7 +363,6 @@ function init() {
     renderSavedListTemplates();
     renderSavedExcludeTemplates();
     switchTab(activeDataSource);
-    handleUrlParams();
 
     // Restore mode settings
     const savedSimpleMode = localStorage.getItem('simpleDrawMode') === 'true';
@@ -435,11 +417,60 @@ function saveEnvironmentTitle() {
 
 function openEnvironmentTemplateDb() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('lotteryEnvironmentTemplates', 1);
-        request.onupgradeneeded = () => request.result.createObjectStore('templates');
+        const request = indexedDB.open('lotteryEnvironmentTemplates', 2);
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains('templates')) request.result.createObjectStore('templates');
+            if (!request.result.objectStoreNames.contains('visuals')) request.result.createObjectStore('visuals');
+        };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
     });
+}
+
+async function readVisual(key) {
+    const db = await openEnvironmentTemplateDb();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('visuals', 'readonly');
+        const request = transaction.objectStore('visuals').get(key);
+        request.onsuccess = () => resolve(request.result || null);
+        transaction.onerror = () => reject(transaction.error);
+        transaction.oncomplete = () => db.close();
+    });
+}
+
+async function writeVisual(key, visual) {
+    const db = await openEnvironmentTemplateDb();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('visuals', 'readwrite');
+        transaction.objectStore('visuals').put(visual, key);
+        transaction.oncomplete = () => { db.close(); resolve(); };
+        transaction.onerror = () => { db.close(); reject(transaction.error); };
+    });
+}
+
+async function deleteVisual(key) {
+    const db = await openEnvironmentTemplateDb();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('visuals', 'readwrite');
+        transaction.objectStore('visuals').delete(key);
+        transaction.oncomplete = () => { db.close(); resolve(); };
+        transaction.onerror = () => { db.close(); reject(transaction.error); };
+    });
+}
+
+async function getVisualWithLegacyMigration(key) {
+    const saved = await readVisual(key);
+    if (saved) return saved;
+    const legacyDataUrl = localStorage.getItem(key);
+    if (!legacyDataUrl) return null;
+    const visual = {
+        blob: await (await fetch(legacyDataUrl)).blob(),
+        name: localStorage.getItem(`${key}Name`) || '已載入自訂圖片'
+    };
+    await writeVisual(key, visual);
+    localStorage.removeItem(key);
+    localStorage.removeItem(`${key}Name`);
+    return visual;
 }
 
 async function readEnvironmentTemplate() {
@@ -478,22 +509,20 @@ async function refreshEnvironmentTemplateButton() {
 
 async function saveEnvironmentTemplate() {
     saveEnvironmentTitle();
-    const settings = {
-        eventTitle: eventTitleText.textContent,
-        theme: localStorage.getItem('lotteryTheme') || 'candy',
-        soundOn: isSoundOn,
-        duration: document.querySelector('input[name="roll-duration"]:checked')?.value || '5000',
-        effect: getWinnerEffect(),
-        simpleDrawMode: simpleDrawToggle.checked,
-        batchDrawEnabled: batchDrawToggle.checked,
-        filterDuplicates: filterDuplicatesToggle.checked,
-        sortWinnersEnabled: sortWinnersToggle.checked,
-        customBg: localStorage.getItem('customBg'),
-        customBgName: localStorage.getItem('customBgName'),
-        customLogo: localStorage.getItem('customLogo'),
-        customLogoName: localStorage.getItem('customLogoName')
-    };
     try {
+        const settings = {
+            eventTitle: eventTitleText.textContent,
+            theme: localStorage.getItem('lotteryTheme') || 'candy',
+            soundOn: isSoundOn,
+            duration: document.querySelector('input[name="roll-duration"]:checked')?.value || '5000',
+            effect: getWinnerEffect(),
+            simpleDrawMode: simpleDrawToggle.checked,
+            batchDrawEnabled: batchDrawToggle.checked,
+            filterDuplicates: filterDuplicatesToggle.checked,
+            sortWinnersEnabled: sortWinnersToggle.checked,
+            customBgVisual: await getVisualWithLegacyMigration('customBg'),
+            customLogoVisual: await getVisualWithLegacyMigration('customLogo')
+        };
         await writeEnvironmentTemplate(settings);
         loadEnvTemplateBtn.classList.remove('hidden');
         eventTitleSaveStatus.textContent = '環境範本已儲存到本機';
@@ -507,9 +536,15 @@ async function loadEnvironmentTemplate() {
     try {
         const settings = await readEnvironmentTemplate();
         if (!settings) { loadEnvTemplateBtn.classList.add('hidden'); return; }
-        for (const key of ['customBg', 'customBgName', 'customLogo', 'customLogoName']) {
-            if (settings[key]) localStorage.setItem(key, settings[key]);
-            else localStorage.removeItem(key);
+        for (const key of ['customBg', 'customLogo']) {
+            const visual = settings[`${key}Visual`] || (settings[key] ? {
+                blob: await (await fetch(settings[key])).blob(),
+                name: settings[`${key}Name`] || '已載入自訂圖片'
+            } : null);
+            if (visual) await writeVisual(key, visual);
+            else await deleteVisual(key);
+            localStorage.removeItem(key);
+            localStorage.removeItem(`${key}Name`);
         }
         setEventTitle(settings.eventTitle);
         applyTheme(settings.theme);
@@ -526,7 +561,7 @@ async function loadEnvironmentTemplate() {
         localStorage.setItem('sortWinnersEnabled', settings.sortWinnersEnabled);
         document.querySelector(`input[name="roll-duration"][value="${settings.duration}"]`)?.click();
         winnerEffectOptions.find(input => input.value === settings.effect)?.click();
-        loadVisuals();
+        await loadVisuals();
         updateWinnersList(true);
         updateHomeSummary();
         if (!lotterySection.classList.contains('hidden')) updatePrizeDisplay();
@@ -586,6 +621,7 @@ function selectSettingsCategory(category) {
     settingsSection.dataset.mode = category;
     const titles = { env: '環境與投影設定', list: '名單匯入與過濾設定', prize: '獎項輪次配置' };
     document.getElementById('settings-dialog-title').textContent = titles[category];
+    document.getElementById('settings-header-icon').textContent = category === 'list' ? '▤' : category === 'prize' ? '🏅' : '⚙';
     document.getElementById('settings-dialog-description').textContent = category === 'env'
         ? '自訂尾牙投影畫面、開獎動效與參加名額管理'
         : category === 'list' ? '匯入與過濾參與名單' : '管理摸彩獎項與抽取順序';
@@ -698,40 +734,70 @@ function handleAddBonusPrize() {
 }
 
 // --- VISUAL CUSTOMIZATION FUNCTIONS ---
-function handleImageUpload(event, storageKey) {
+let visualLoadVersion = 0;
+let activeLogoUrl = null;
+let activeBgUrl = null;
+
+async function handleImageUpload(event, storageKey) {
     const file = event.target.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert('圖片太大囉！請上傳小於 2MB 的圖片。'); return; }
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            localStorage.setItem(storageKey, e.target.result);
-            localStorage.setItem(storageKey === 'customBg' ? 'customBgName' : 'customLogoName', file.name);
-            loadVisuals();
-        } catch (error) {
-            alert('圖片無法儲存到本機，請改用較小的圖片。');
-            console.error('無法儲存自訂圖片：', error);
-        }
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 10 * 1024 * 1024) {
+        alert('圖片太大囉！請上傳 10 MB 以下的圖片。');
+        event.target.value = '';
+        return;
+    }
+    try {
+        await writeVisual(storageKey, { blob: file, name: file.name });
+        localStorage.removeItem(storageKey);
+        localStorage.removeItem(`${storageKey}Name`);
+        await loadVisuals();
+    } catch (error) {
+        alert('圖片無法儲存到本機，請檢查瀏覽器儲存空間。');
+        console.error('無法儲存自訂圖片：', error);
+    }
 }
 
-function loadVisuals() {
-    const customLogo = localStorage.getItem('customLogo');
-    if (customLogo) {
-        logoImg.src = customLogo;
-        logoImg.style.visibility = 'visible';
-        logoImg.classList.remove('default-logo');
-    } else {
-        logoImg.src = "Logo.png";
-        logoImg.classList.add('default-logo');
+async function resetVisual(key, input) {
+    try {
+        await deleteVisual(key);
+        localStorage.removeItem(key);
+        localStorage.removeItem(`${key}Name`);
+        input.value = '';
+        await loadVisuals();
+    } catch (error) {
+        alert('無法恢復預設圖片，請檢查瀏覽器儲存空間。');
+        console.error('無法恢復預設圖片：', error);
     }
-    logoFileName.textContent = `目前：${customLogo ? (localStorage.getItem('customLogoName') || '已載入自訂標誌') : 'Logo.png'}`;
+}
 
-    const customBg = localStorage.getItem('customBg');
-    heroVisual.style.backgroundImage = customBg ? `url(${customBg})` : "url('hero-izakaya.jpg')";
-    bgFileName.textContent = `目前：${customBg ? (localStorage.getItem('customBgName') || '已載入自訂圖片') : 'hero-izakaya.jpg'}`;
+async function loadVisuals() {
+    const version = ++visualLoadVersion;
+    try {
+        const [customLogo, customBg] = await Promise.all([
+            getVisualWithLegacyMigration('customLogo'),
+            getVisualWithLegacyMigration('customBg')
+        ]);
+        if (version !== visualLoadVersion) return;
+        if (activeLogoUrl) URL.revokeObjectURL(activeLogoUrl);
+        if (activeBgUrl) URL.revokeObjectURL(activeBgUrl);
+        activeLogoUrl = customLogo ? URL.createObjectURL(customLogo.blob) : null;
+        activeBgUrl = customBg ? URL.createObjectURL(customBg.blob) : null;
+        if (customLogo) {
+            logoImg.src = activeLogoUrl;
+            logoImg.style.visibility = 'visible';
+            logoImg.classList.remove('default-logo');
+        } else {
+            logoImg.src = "Logo.png";
+            logoImg.style.visibility = 'visible';
+            logoImg.classList.add('default-logo');
+        }
+        logoFileName.textContent = `目前：${customLogo ? customLogo.name : 'Logo.png'}`;
+
+        heroVisual.style.backgroundImage = customBg ? `url("${activeBgUrl}")` : "url('hero-izakaya.jpg')";
+        bgFileName.textContent = `目前：${customBg ? customBg.name : 'hero-izakaya.jpg'}`;
+    } catch (error) {
+        console.error('無法載入自訂圖片：', error);
+    }
 }
 
 // --- SESSION RECOVERY FUNCTIONS ---
@@ -959,7 +1025,6 @@ function switchTab(tabName) {
     if (tabName !== 'exclude') activeDataSource = tabName;
     const tabs = {
         custom: { btn: tabCustomBtn, content: tabContentCustom },
-        cloud: { btn: tabCloudBtn, content: tabContentCloud },
         csv: { btn: tabCsvBtn, content: tabContentCsv },
         exclude: { btn: tabExcludeBtn, content: tabContentExclude }
     };
@@ -990,7 +1055,6 @@ function selectedColumn(select, customInput) {
     return { letter, index: [...letter].reduce((index, char) => index * 26 + char.charCodeAt(0) - 64, 0) - 1 };
 }
 
-function handleUrlParams() { const params = new URLSearchParams(window.location.search); if (params.has('sheetUrl') && params.has('sheetName') && params.has('column')) { sheetUrlInput.value = params.get('sheetUrl'); sheetNameInput.value = params.get('sheetName'); setColumnChoice(columnLetterInput, columnLetterCustomInput, params.get('column')); switchTab('cloud'); handleLoadData(); } }
 function readAndValidatePrizes() {
     if (simpleDrawToggle.checked) return true;
     const nextPrizes = [];
@@ -1031,9 +1095,7 @@ async function handleLoadData() {
     if (tabExcludeBtn.classList.contains('active')) switchTab(activeDataSource);
     settingsDoneBtn.disabled = true;
     updateStatus('正在處理名單...');
-    if (activeDataSource === 'cloud') {
-        await loadFromCloud();
-    } else if (activeDataSource === 'csv') {
+    if (activeDataSource === 'csv') {
         await loadFromPublishedCsv();
     } else {
         loadFromCustomInput();
@@ -1042,8 +1104,7 @@ async function handleLoadData() {
 
 function showColumnSelectionModal(headers, nameColIndex) {
     columnSelectionContainer.innerHTML = '';
-    const checkboxIdPrefix = activeDataSource === 'cloud' ? 'cloud-smart-filter' : 'csv-smart-filter';
-    const smartFilterEnabled = document.getElementById(checkboxIdPrefix) ? document.getElementById(checkboxIdPrefix).checked : true;
+    const smartFilterEnabled = document.getElementById('csv-smart-filter').checked;
 
     if (!smartFilterEnabled) {
         handleColumnSelectionConfirmed([]); 
@@ -1141,41 +1202,6 @@ function parseCSV(text) {
     }
     if (currentCell || currentRow.length > 0) { currentRow.push(currentCell.trim()); rows.push(currentRow); }
     return rows;
-}
-
-async function loadFromCloud() {
-    const sheetUrl = sheetUrlInput.value.trim();
-    const sheetName = sheetNameInput.value.trim();
-    if (!sheetUrl) { updateStatus('請輸入 Google 試算表「共用」網址！', true); settingsDoneBtn.disabled = false; return; }
-    const sheetIdMatch = sheetUrl.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    if (!sheetIdMatch || !sheetIdMatch[1]) { updateStatus('無法從「共用」網址中解析出試算表 ID，請確認網址是否正確。', true); settingsDoneBtn.disabled = false; return; }
-    const column = selectedColumn(columnLetterInput, columnLetterCustomInput);
-    if (!column) return;
-    const sheetId = sheetIdMatch[1];
-    updateStatus('正在從雲端讀取名單...');
-    try {
-        const timestamp = new Date().getTime();
-        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&_=${timestamp}`;
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(csvUrl)}`;
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error(`網路回應錯誤: ${response.statusText}`);
-        const csvText = await response.text();
-        
-        const rows = parseCSV(csvText);
-        if (rows.length === 0) throw new Error("CSV 資料為空");
-
-        const headers = rows[0]; 
-        const nameColIndex = column.index;
-        if (nameColIndex >= headers.length) throw new Error(`試算表沒有 ${column.letter} 欄`);
-        
-        pendingLoadedData = { rows, nameColIndex };
-        showColumnSelectionModal(headers, nameColIndex);
-
-    } catch (error) {
-        console.error('讀取共用連結時發生錯誤:', error);
-        updateStatus(error.message.startsWith('試算表沒有') ? error.message : '讀取失敗！請檢查網址是否正確，以及網路連線。', true);
-        settingsDoneBtn.disabled = false;
-    }
 }
 
 async function loadFromPublishedCsv() {
@@ -1561,14 +1587,10 @@ function updatePrizeDisplay() {
         drawButton.disabled = false; exportCsvBtn.classList.remove('hidden'); updateWinnersList(); updateDashboardStats(); return;
     }
     const currentPrize = prizes[currentPrizeIndex];
-    if (isSimpleMode) { currentPrizeDisplay.textContent = '幸運的你'; } 
-    else {
-        const progress = `${currentPrize.winners.length} / ${currentPrize.quantity}`;
-        currentPrizeDisplay.textContent = `正在抽取：${currentPrize.name} (${progress})`;
-    }
+    currentPrizeDisplay.textContent = currentPrize.name;
     if (currentPrize.winners.length >= currentPrize.quantity) {
         const nextPrize = prizes.find((p, index) => index > currentPrizeIndex && p.winners.length < p.quantity);
-        if (nextPrize) currentPrizeDisplay.textContent = `下一輪：${nextPrize.name} (0 / ${nextPrize.quantity})`;
+        if (nextPrize) currentPrizeDisplay.textContent = nextPrize.name;
         drawButton.textContent = nextPrize ? `繼續抽「${nextPrize.name}」` : '抽獎結束';
     } else {
         if (isSimpleMode) { drawButton.textContent = '抽籤'; } 
@@ -1804,7 +1826,6 @@ function resetApp() {
     exportCsvBtn.classList.add('hidden'); participantCountSpan.textContent = '0';
     currentPrizeDisplay.textContent = ''; setEventTitle(titleInput.value.trim() || '祝您中大獎');
     participantLabel.textContent = '剩餘摸彩人數'; drawButton.textContent = '開始摸彩'; drawButton.disabled = false;
-    sheetUrlInput.value = ''; sheetNameInput.value = '工作表1'; setColumnChoice(columnLetterInput, columnLetterCustomInput, 'A');
     csvUrlInput.value = ''; setColumnChoice(csvColumnLetterInput, csvColumnLetterCustomInput, 'A'); customListInput.value = ''; excludeListInput.value = '';
     prizesContainer.innerHTML = ''; addPrizeRow('三獎', 3); addPrizeRow('二獎', 2); addPrizeRow('頭獎', 1);
     settingsDoneBtn.disabled = false; updateStatus(''); switchTab('custom'); clearSession(); updateDashboardStats(); showHome();

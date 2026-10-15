@@ -114,7 +114,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 /* Event lobby */
 .app-header { position: relative; z-index: 20; min-height: 92px; margin-bottom: 0; padding: 12px 24px; }
 .brand-lockup { flex: 0 1 auto; gap: 12px; }
-.brand-logo-wrap { display: grid; place-items: center; flex: none; width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, #f34873, #a92275); }
+.brand-logo-wrap { display: grid; place-items: center; flex: none; width: 54px; height: 54px; border-radius: 14px; background: linear-gradient(135deg, #f34873, #a92275); }
 .brand-logo { width: 38px; height: 38px; }
 .brand-logo.default-logo { filter: invert(1); }
 .izakaya-title { margin: 0; white-space: nowrap; font-size: clamp(20px, 1.75vw, 29px); }
@@ -173,10 +173,7 @@ button.summary-card:hover { border-color: #d44d8c; transform: translateY(-1px); 
 .summary-icon.pink { background: #ffe1eb; color: #b52670; }
 .summary-icon.purple { background: #f3e5fa; color: #9041c7; }
 .summary-icon.yellow { background: #fff4d6; color: #d18c0c; }
-.app-footer { justify-content: space-between; gap: 14px; padding-inline: max(20px, calc((100vw - 1720px)/2)); font-size: 12px; text-align: left; }
-.footer-links { display: flex; gap: 24px; }
-.footer-links button { border: 0; background: none; color: var(--text-muted-color); }
-.footer-links button:disabled { cursor: default; opacity: .7; }
+.app-footer { gap: 8px; padding-inline: max(20px, calc((100vw - 1720px)/2)); font-size: 12px; }
 
 /* Settings and recent winners dialogs */
 body.modal-open { overflow: hidden; }
@@ -461,8 +458,7 @@ input:checked + .toggle-switch-bg { background-color: var(--primary-color); }
     .summary-card { gap: 8px; min-height: 75px; padding: 8px; font-size: 11px; }
     .summary-card strong { font-size: 14px; }
     .summary-icon { width: 36px; height: 36px; font-size: 19px; }
-    .app-footer { flex-direction: column; gap: 8px; padding: 12px; text-align: center; }
-    .footer-links { justify-content: center; gap: 14px; }
+    .app-footer { gap: 8px; padding: 12px; text-align: center; }
     .header-icon-button, .header-reset-button { min-width: 40px; min-height: 40px; }
     .header-reset-button { padding: 0 9px; font-size: 12px; }
     .setup-layout { gap: 14px; }
