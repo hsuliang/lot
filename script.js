@@ -24,6 +24,7 @@ const downloadWinnersBtn = document.getElementById('download-winners-btn');
 const enterStageBtn = document.getElementById('enter-stage-btn');
 const homeStatusText = document.getElementById('home-status-text');
 const homeStatusIcon = document.getElementById('home-status-icon');
+const appToast = document.getElementById('app-toast');
 const summaryPrizesBtn = document.getElementById('summary-prizes-btn');
 const summaryPrizeTooltip = document.getElementById('summary-prize-tooltip');
 const summaryPrizeCount = document.getElementById('summary-prize-count');
@@ -148,6 +149,7 @@ let rollingInterval = null;
 let activeDataSource = 'custom';
 let isSoundOn = true;
 let lastFocusedElement = null;
+let appToastTimeout = null;
 const themes = [ { id: 'candy', name: '糖果王國', colors: ['#ff69b4', '#87ceeb'] }, { id: 'forest', name: '森林夥伴', colors: ['#228b22', '#ff7f50'] }, { id: 'izakaya', name: '居酒屋', colors: ['#e53e3e', '#ffab00'] }, { id: 'sakura', name: '櫻花', colors: ['#db2777', '#fdf2f8'] }, { id: 'midnight', name: '午夜', colors: ['#38bdf8', '#0f172a'] } ];
 
 function init() {
@@ -186,7 +188,14 @@ function init() {
         if (event.target === modal) (modal === settingsSection ? closeSettings : closeWinnersModal)();
     }));
     navBonusBtn.addEventListener('click', () => {
-        if (!hasActiveStage()) { showSettings('list'); return; }
+        if (participants.length === 0) {
+            showAppToast('請先完成名單設定並載入摸彩名單。');
+            return;
+        }
+        if (lotterySection.classList.contains('hidden')) {
+            showAppToast('請先從活動大廳進入摸彩現場，再使用老闆加碼。');
+            return;
+        }
         switchToLotteryView();
         openBonusModal();
     });
@@ -1541,6 +1550,13 @@ function applyTheme(themeId) {
 
 function loadTheme() { const savedTheme = localStorage.getItem('lotteryTheme') || 'candy'; applyTheme(savedTheme); }
 function updateStatus(message, isError = false) { statusMessage.textContent = message; statusMessage.style.color = isError ? 'var(--danger-color)' : 'var(--accent-color)'; }
+
+function showAppToast(message) {
+    appToast.textContent = message;
+    appToast.classList.add('visible');
+    clearTimeout(appToastTimeout);
+    appToastTimeout = setTimeout(() => appToast.classList.remove('visible'), 3200);
+}
 
 function switchToLotteryView() {
     document.body.classList.add('stage-view');

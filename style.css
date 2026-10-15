@@ -361,6 +361,8 @@ input:checked + .toggle-switch-bg { background-color: var(--primary-color); }
 
 .app-footer { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; min-height: 45px; padding: 12px 20px; border-top: 1px solid var(--border-color); background: var(--footer-bg); color: var(--text-muted-color); font-size: 11px; text-align: center; }
 .app-footer a { color: var(--accent-color); font-weight: 800; }
+.app-toast { position: fixed; z-index: 60; right: 20px; bottom: 64px; max-width: min(440px, calc(100vw - 32px)); padding: 12px 18px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg); color: var(--text-color); box-shadow: 0 12px 32px rgba(45, 16, 36, .2); font-size: 14px; font-weight: 700; opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .18s ease, transform .18s ease, visibility .18s; }
+.app-toast.visible { opacity: 1; visibility: visible; transform: translateY(0); }
 
 @media (min-width: 1101px) {
     body.stage-view .app-shell { display: flex; flex-direction: column; height: calc(100dvh - 45px); padding-bottom: 12px; }
